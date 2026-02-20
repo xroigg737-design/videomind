@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% set active = "home" %}
+{% block title %}VideoMind - Processar vídeo{% endblock %}
+
+{% block extra_style %}
+  .source-input { display: none; }
+  .source-input.active { display: block; }
+  .model-desc {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 4px;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+  }
+  .hero {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .hero h1 {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+  }
+  .hero p {
+    color: #888;
+    font-size: 1rem;
+  }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="hero">
+    <h1>Processar un vídeo</h1>
+    <p>Transcriu i genera un mapa conceptual interactiu</p>
+  </div>
+
+  {% if error %}
+  <div class="card mb-2" style="border-color: #e94560; background: #2a1020;">
+    <strong>Error:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <form method="POST" action="/process">
+      <div class="form-group">
+        <label>Font del vídeo</label>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="source_type" value="url" checked onchange="toggleSource(this.value)">
+            URL de YouTube
+          </label>
+          <label>
+            <input type="radio" name="source_type" value="folder" onchange="toggleSource(this.value)">
+            Carpeta local
+          </label>
+        </div>
+
+        <div id="source-url" class="source-input active">
+          <input type="url" name="url" placeholder="https://youtube.com/watch?v=...">
+        </div>
+        <div id="source-folder" class="source-input">
+          <input type="text" name="folder" placeholder="/ruta/als/videos">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="model">Model Whisper</label>
+          <select name="model" id="model" onchange="updateModelDesc()">
+            <option value="tiny">tiny</option>
+            <option value="base" selected>base</option>
+            <option value="small">small</option>
+            <option value="medium">medium</option>
+            <option value="large">large</option>
+          </select>
+          <div class="model-desc" id="model-desc">Equilibri entre velocitat i qualitat. ~1 GB RAM.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="lang">Idioma</label>
+          <input type="text" name="lang" id="lang" value="auto" placeholder="auto, en, es, ca...">
+          <div class="model-desc">Deixa "auto" per detectar automaticament.</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="format">Format de sortida</label>
+        <select name="format" id="format">
+          <option value="all" selected>Tots (HTML + Markdown + JSON)</option>
+          <option value="html">Nomes HTML</option>
+          <option value="md">Nomes Markdown</option>
+          <option value="json">Nomes JSON</option>
+        </select>
+      </div>
+
+      <button type="submit" class="btn" style="width: 100%;">Processar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSource(val) {
+  document.getElementById('source-url').className = 'source-input' + (val === 'url' ? ' active' : '');
+  document.getElementById('source-folder').className = 'source-input' + (val === 'folder' ? ' active' : '');
+}
+
+const MODEL_DESCS = {
+  tiny:   "El mes rapid. Qualitat baixa. ~1 GB RAM.",
+  base:   "Equilibri entre velocitat i qualitat. ~1 GB RAM.",
+  small:  "Bona qualitat. ~2 GB RAM.",
+  medium: "Qualitat alta. ~5 GB RAM.",
+  large:  "Maxima qualitat. ~10 GB RAM."
+};
+
+function updateModelDesc() {
+  const sel = document.getElementById('model');
+  document.getElementById('model-desc').textContent = MODEL_DESCS[sel.value] || '';
+}
+</script>
+{% endblock %}

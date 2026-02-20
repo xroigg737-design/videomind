@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% set active = "library" %}
+{% block title %}VideoMind - Biblioteca{% endblock %}
+
+{% block extra_style %}
+  .library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .library-header h1 { font-size: 1.5rem; }
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-date {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 12px;
+  }
+  .card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .card-actions { margin-top: auto; }
+  .card.library-card {
+    display: flex;
+    flex-direction: column;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #888;
+  }
+  .empty-state h2 {
+    font-size: 1.3rem;
+    color: #aaa;
+    margin-bottom: 12px;
+  }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="library-header">
+    <h1>Biblioteca</h1>
+    <span class="text-muted">{{ videos | length }} vídeo{{ 's' if videos | length != 1 else '' }}</span>
+  </div>
+
+  {% if videos %}
+  <div class="grid">
+    {% for v in videos %}
+    <div class="card library-card">
+      <div class="card-title" title="{{ v.title }}">{{ v.title }}</div>
+      <div class="card-date">{{ v.date }}</div>
+      <div class="card-badges">
+        {% if v.has_audio %}<span class="badge badge-ok">Audio</span>{% endif %}
+        {% if v.has_transcript %}<span class="badge badge-ok">Transcript</span>{% endif %}
+        {% if v.has_html %}<span class="badge badge-ok">HTML</span>{% endif %}
+        {% if v.has_md %}<span class="badge badge-ok">MD</span>{% endif %}
+        {% if v.has_json %}<span class="badge badge-ok">JSON</span>{% endif %}
+      </div>
+      <div class="card-actions">
+        <a href="/viewer/{{ v.title | urlencode }}" class="btn btn-sm btn-outline">Veure</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h2>Cap vídeo processat</h2>
+    <p>Processa el teu primer vídeo des de la pagina d'inici.</p>
+    <a href="/" class="btn mt-2">Anar a l'inici</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% set active = "home" %}
+{% block title %}VideoMind - Processant...{% endblock %}
+
+{% block extra_style %}
+  .steps {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #888;
+    transition: all 0.3s;
+  }
+  .step.active {
+    border-color: #e94560;
+    color: #fff;
+    background: #1e2a4a;
+  }
+  .step.done {
+    border-color: #1b4332;
+    color: #95d5b2;
+    background: #162e25;
+  }
+  .step-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #555;
+    transition: background 0.3s;
+  }
+  .step.active .step-dot { background: #e94560; }
+  .step.done .step-dot { background: #95d5b2; }
+
+  .log-area {
+    background: #0d1117;
+    border: 1px solid #0f3460;
+    border-radius: 8px;
+    padding: 16px;
+    height: 320px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #aaa;
+  }
+  .log-area .log-line { white-space: pre-wrap; word-break: break-word; }
+  .log-area .log-line.step-msg { color: #e94560; font-weight: 600; }
+  .log-area .log-line.error { color: #ff6b6b; }
+
+  .result-links {
+    display: none;
+    margin-top: 20px;
+    text-align: center;
+  }
+  .result-links.show { display: block; }
+  .result-links a { margin: 0 8px; }
+
+  .status-title { text-align: center; margin-bottom: 24px; }
+  .status-title h2 { font-size: 1.4rem; margin-bottom: 6px; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .pulsing { animation: pulse 1.5s infinite; }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="status-title">
+    <h2 id="main-status" class="pulsing">Processant...</h2>
+    <p class="text-muted" id="job-id">Job: {{ job_id }}</p>
+  </div>
+
+  <div class="steps">
+    <div class="step" id="step-download">
+      <span class="step-dot"></span>
+      1. Obtenir audio
+    </div>
+    <div class="step" id="step-transcribe">
+      <span class="step-dot"></span>
+      2. Transcriure
+    </div>
+    <div class="step" id="step-mindmap">
+      <span class="step-dot"></span>
+      3. Mapa conceptual
+    </div>
+  </div>
+
+  <div class="log-area" id="log-area"></div>
+
+  <div class="result-links" id="result-links">
+    <p class="mb-2" style="color: #95d5b2; font-weight: 600;">Processat correctament!</p>
+    <a href="/library" class="btn btn-sm">Anar a la biblioteca</a>
+  </div>
+
+  <div class="result-links" id="error-links" style="display: none;">
+    <p class="mb-2" style="color: #ff6b6b; font-weight: 600;">Error durant el processament</p>
+    <a href="/" class="btn btn-sm">Tornar a l'inici</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const logArea = document.getElementById('log-area');
+const steps = {
+  download:   document.getElementById('step-download'),
+  transcribe: document.getElementById('step-transcribe'),
+  mindmap:    document.getElementById('step-mindmap')
+};
+
+function addLog(text, cls) {
+  const div = document.createElement('div');
+  div.className = 'log-line' + (cls ? ' ' + cls : '');
+  div.textContent = text;
+  logArea.appendChild(div);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+function setStep(name, state) {
+  const el = steps[name];
+  if (!el) return;
+  el.classList.remove('active', 'done');
+  if (state) el.classList.add(state);
+}
+
+const evtSource = new EventSource('/events/{{ job_id }}');
+
+evtSource.addEventListener('log', function(e) {
+  addLog(e.data);
+});
+
+evtSource.addEventListener('step', function(e) {
+  const data = JSON.parse(e.data);
+  // Mark previous steps as done
+  const order = ['download', 'transcribe', 'mindmap'];
+  const idx = order.indexOf(data.step);
+  for (let i = 0; i < idx; i++) setStep(order[i], 'done');
+  setStep(data.step, 'active');
+  addLog(data.message, 'step-msg');
+});
+
+evtSource.addEventListener('done', function(e) {
+  evtSource.close();
+  const h = document.getElementById('main-status');
+  h.textContent = 'Completat!';
+  h.className = '';
+  h.style.color = '#95d5b2';
+  // Mark all steps done
+  Object.keys(steps).forEach(k => setStep(k, 'done'));
+  document.getElementById('result-links').classList.add('show');
+});
+
+evtSource.addEventListener('error_msg', function(e) {
+  addLog(e.data, 'error');
+});
+
+evtSource.addEventListener('failed', function(e) {
+  evtSource.close();
+  const h = document.getElementById('main-status');
+  h.textContent = 'Error';
+  h.className = '';
+  h.style.color = '#ff6b6b';
+  addLog(e.data, 'error');
+  document.getElementById('error-links').style.display = 'block';
+});
+
+evtSource.onerror = function() {
+  evtSource.close();
+};
+</script>
+{% endblock %}

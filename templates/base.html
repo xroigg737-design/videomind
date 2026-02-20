@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}VideoMind{% endblock %}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  a { color: #e94560; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Navbar */
+  nav {
+    background: #16213e;
+    border-bottom: 2px solid #0f3460;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    gap: 32px;
+  }
+  nav .brand {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #e94560;
+    letter-spacing: 1px;
+  }
+  nav .links { display: flex; gap: 20px; }
+  nav .links a {
+    color: #ccc;
+    font-size: 0.95rem;
+    padding: 6px 0;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  nav .links a:hover, nav .links a.active {
+    color: #fff;
+    border-bottom-color: #e94560;
+    text-decoration: none;
+  }
+
+  /* Main content */
+  .container {
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 32px 20px;
+    flex: 1;
+  }
+
+  /* Forms */
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #ccc;
+  }
+  input[type="text"], input[type="url"], select {
+    width: 100%;
+    padding: 10px 14px;
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    color: #eee;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: #e94560; }
+  .form-group { margin-bottom: 20px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-block;
+    padding: 10px 24px;
+    background: #e94560;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #c73650; text-decoration: none; }
+  .btn-sm { padding: 6px 14px; font-size: 0.85rem; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid #e94560;
+    color: #e94560;
+  }
+  .btn-outline:hover { background: #e94560; color: #fff; }
+
+  /* Cards */
+  .card {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 10px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #e94560; }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #aaa;
+  }
+  .badge-ok { background: #1b4332; color: #95d5b2; }
+
+  /* Radio group */
+  .radio-group {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 400;
+    color: #eee;
+  }
+
+  /* Utility */
+  .text-muted { color: #888; }
+  .text-center { text-align: center; }
+  .mt-2 { margin-top: 16px; }
+  .mt-3 { margin-top: 24px; }
+  .mb-2 { margin-bottom: 16px; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    nav { padding: 0 12px; gap: 16px; }
+    .container { padding: 20px 12px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  {% block extra_style %}{% endblock %}
+</style>
+</head>
+<body>
+<nav>
+  <span class="brand">VideoMind</span>
+  <div class="links">
+    <a href="/" class="{% if active == 'home' %}active{% endif %}">Inici</a>
+    <a href="/library" class="{% if active == 'library' %}active{% endif %}">Biblioteca</a>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
