@@ -91,11 +91,18 @@
       <div class="form-row">
         <div class="form-group">
           <label for="visual_type">Tipus de visualitzacio</label>
-          <select name="visual_type" id="visual_type">
-            <option value="sketchnote" selected>Sketchnote</option>
-            <option value="mindmap">Mapa mental</option>
-            <option value="infografia">Infografia</option>
-          </select>
+          <div style="display: flex; gap: 8px; align-items: start;">
+            <select name="visual_type" id="visual_type" style="flex: 1;">
+              <option value="sketchnote" selected>Sketchnote</option>
+              <option value="mindmap">Mapa mental</option>
+              <option value="infografia">Infografia</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('ref-image').click()">
+              Detectar
+            </button>
+          </div>
+          <input type="file" id="ref-image" accept="image/*" style="display:none" onchange="classifyImage(this)">
+          <div id="classify-status" class="model-desc"></div>
         </div>
 
         <div class="form-group">
@@ -133,6 +140,30 @@ const MODEL_DESCS = {
 function updateModelDesc() {
   const sel = document.getElementById('model');
   document.getElementById('model-desc').textContent = MODEL_DESCS[sel.value] || '';
+}
+
+async function classifyImage(input) {
+  if (!input.files[0]) return;
+  const status = document.getElementById('classify-status');
+  status.textContent = 'Analitzant imatge...';
+
+  const formData = new FormData();
+  formData.append('image', input.files[0]);
+
+  try {
+    const resp = await fetch('/classify', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.visual_type) {
+      document.getElementById('visual_type').value = data.visual_type;
+      const labels = { sketchnote: 'Sketchnote', mindmap: 'Mapa mental', infografia: 'Infografia' };
+      status.textContent = `Detectat: ${labels[data.visual_type]} (${data.confidence})`;
+    } else {
+      status.textContent = "No s'ha pogut classificar.";
+    }
+  } catch (e) {
+    status.textContent = 'Error en la classificacio.';
+  }
+  input.value = '';
 }
 </script>
 {% endblock %}

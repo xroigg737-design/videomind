@@ -224,6 +224,29 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/classify", methods=["POST"])
+def classify():
+    """Classify an uploaded image's visual format type."""
+    import json
+    import tempfile
+    from pipeline.image_classifier import classify_image
+
+    file = request.files.get("image")
+    if not file:
+        return json.dumps({"error": "No image uploaded"}), 400
+
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "png"
+    with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
+        file.save(tmp)
+        tmp_path = tmp.name
+
+    try:
+        result = classify_image(tmp_path)
+        return json.dumps(result), 200, {"Content-Type": "application/json"}
+    finally:
+        os.unlink(tmp_path)
+
+
 @app.route("/process", methods=["POST"])
 def process():
     source_type = request.form.get("source_type", "url")

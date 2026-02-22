@@ -81,6 +81,12 @@ Examples:
         help=f"Visual format type (default: {DEFAULT_VISUAL_TYPE})",
     )
     parser.add_argument(
+        "--reference",
+        type=str,
+        default=None,
+        help="Path to a reference image to auto-detect visual type",
+    )
+    parser.add_argument(
         "--open",
         action="store_true",
         dest="open_browser",
@@ -152,6 +158,16 @@ def main():
 
     if not validate_config():
         sys.exit(1)
+
+    if args.reference:
+        from pipeline.image_classifier import classify_image
+        print(f"\n[Step 0] Classifying reference image: {args.reference}")
+        result = classify_image(os.path.abspath(args.reference))
+        detected = result.get("visual_type", args.visual_type)
+        confidence = result.get("confidence", "?")
+        print(f"  Detected: {detected} (confidence: {confidence})")
+        print(f"  Reasoning: {result.get('reasoning', '')}")
+        args.visual_type = detected
 
     output_dir = os.path.abspath(args.output)
     os.makedirs(output_dir, exist_ok=True)
