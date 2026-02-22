@@ -1,7 +1,9 @@
-"""Sketchnote visual format — migrated from pipeline/mindmap.py.
+"""Sketchnote visual format — hand-drawn-style visual notes.
 
-Generates a hand-drawn-style visual note with section boxes, icons, metaphors,
+Generates a sketchnote with section boxes, icons, metaphors,
 and connection arrows laid out in a responsive grid.
+
+Phase 3 transform: receives a structural model and produces a sketchnote JSON.
 """
 
 from xml.sax.saxutils import escape as xml_escape
@@ -9,50 +11,65 @@ from xml.sax.saxutils import escape as xml_escape
 from pipeline.formats.base import VisualFormat, html_page_wrapper
 from pipeline.formats.validators import check_list_length, check_word_count
 
-SYSTEM_PROMPT = """You are a visual thinker and sketchnote artist. You transform content into \
-vivid, hand-drawn-style visual notes. You think in images, metaphors, and short punchy phrases \
--- never in paragraphs. You prioritize visual impact and memorability over academic structure. \
-You produce clean JSON output suitable for rendering as a sketchnote infographic."""
+TRANSFORM_SYSTEM = """\
+You are a visual thinker and sketchnote artist. You transform structured data into \
+vivid, hand-drawn-style visual notes. You think in images, metaphors, and short punchy phrases — \
+never in paragraphs. You prioritize visual impact and memorability. \
+You use UPPERCASE for headings strategically. \
+You strictly respect word limits. You produce clean JSON."""
 
-EXTRACTION_PROMPT = """\
-Turn this transcript into a visual sketchnote. Think like an illustrator, not a professor.
+TRANSFORM_PROMPT = """\
+Transform this structural model into a visual sketchnote.
 
-Extract:
-- A punchy title (max 5 words, like a poster headline)
-- 4-8 visual blocks, each with:
-  - A unique id (s1, s2, ...)
-  - A short heading (2-4 words, fragment style)
-  - An expressive emoji icon (pick vivid, unexpected ones)
-  - A metaphor: one short visual metaphor for the block (e.g. "building bridges", "peeling the onion")
-  - 2-4 key points as fragments (max 5-6 words each, no full sentences)
-  - A hex color from the palette below
-- 1-4 connections between related blocks with vivid labels (use verbs + imagery, e.g. "fuels", "unlocks", "feeds")
+STRUCTURAL MODEL:
+{structural_model}
 
-Style guide:
+STRICT RULES:
+- Title: maximum 5 words, like a poster headline. Use UPPERCASE.
+- 4 to 6 visual blocks (one per nuclear idea + optional extras). NEVER more than 6.
+- Each block has:
+  - id: "s1", "s2", etc.
+  - heading: 2-4 words, fragment style. Use UPPERCASE strategically.
+  - icon: one expressive emoji (vivid, unexpected, not generic)
+  - metaphor: one short visual metaphor for the block (e.g. "building bridges")
+  - points: 2-3 key fragments. MAXIMUM 6 words each. No full sentences.
+  - color: from palette below
+- 1-3 connections between blocks with vivid verb labels (e.g. "fuels", "unlocks")
 - Write like a whiteboard sketch, NOT an essay
 - Use action words and imagery over abstract nouns
-- Each point should feel like a sticky note, not a paragraph
-- Icons should be playful and expressive, not generic
+- Allow expressive, playful language
 
-Use these colors for sections: #4A90D9, #E67E22, #2ECC71, #9B59B6, #E74C3C, #1ABC9C, #F39C12, #3498DB.
+Colors: #4A90D9, #E67E22, #2ECC71, #9B59B6, #E74C3C, #1ABC9C, #F39C12, #3498DB
 
-Return ONLY valid JSON matching this exact schema (no other text):
+Return ONLY valid JSON:
 {{
-  "title": "string - punchy topic",
+  "title": "PUNCHY TOPIC",
   "sections": [
     {{
       "id": "s1",
-      "heading": "short heading",
+      "heading": "SHORT HEADING",
       "icon": "emoji",
       "metaphor": "visual metaphor phrase",
-      "points": ["fragment point 1", "fragment point 2"],
+      "points": ["fragment 1", "fragment 2"],
       "color": "#hex"
     }}
   ],
   "connections": [
-    {{ "from": "s1", "to": "s2", "label": "vivid relationship" }}
+    {{"from": "s1", "to": "s2", "label": "vivid verb"}}
   ]
-}}
+}}"""
+
+# Legacy prompts kept for backward compatibility
+SYSTEM_PROMPT = TRANSFORM_SYSTEM
+EXTRACTION_PROMPT = """\
+Turn this transcript into a visual sketchnote.
+
+Extract:
+- A punchy title (max 5 words)
+- 4-6 visual blocks, each with id, heading (2-4 words), icon, metaphor, points (max 6 words each), color
+- 1-3 connections between blocks
+
+Return ONLY valid JSON.
 
 TRANSCRIPT:
 {transcript}"""
@@ -60,6 +77,8 @@ TRANSCRIPT:
 
 class SketchnoteFormat(VisualFormat):
     FORMAT_TYPE = "sketchnote"
+    TRANSFORM_SYSTEM = TRANSFORM_SYSTEM
+    TRANSFORM_PROMPT = TRANSFORM_PROMPT
     SYSTEM_PROMPT = SYSTEM_PROMPT
     EXTRACTION_PROMPT = EXTRACTION_PROMPT
     FILE_PREFIX = "mindmap"  # backward-compatible file naming
@@ -69,7 +88,7 @@ class SketchnoteFormat(VisualFormat):
     def validate(self, data: dict) -> list:
         warnings = []
         sections = data.get("sections", [])
-        w = check_list_length(sections, 4, 8, "sections")
+        w = check_list_length(sections, 4, 6, "sections")
         if w:
             warnings.append(w)
         for sec in sections:

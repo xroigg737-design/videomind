@@ -2,6 +2,8 @@
 
 Generates an infographic with Problem / Method / Result structure
 in a vertical 16:9 layout.
+
+Phase 3 transform: receives a structural model and produces an infografia JSON.
 """
 
 from xml.sax.saxutils import escape as xml_escape
@@ -12,54 +14,64 @@ from pipeline.formats.validators import (
     check_word_count,
 )
 
-SYSTEM_PROMPT = """You are an expert infographic designer. You transform complex content into \
-clear, visually compelling 3-panel infographics following a Problem / Method / Result narrative \
-structure. You write punchy headlines, short bullet points, and a memorable closing phrase. \
-You produce clean JSON suitable for rendering as an infographic."""
+TRANSFORM_SYSTEM = """\
+You are an expert infographic designer. You transform structured data into \
+clear, visually compelling 3-panel infographics. You write punchy headlines, \
+short bullet points, and memorable closing phrases. You are oriented toward \
+communication and impact, not academic depth. \
+You strictly respect word limits. You produce clean JSON."""
 
-EXTRACTION_PROMPT = """\
-Turn this transcript into a 3-panel infographic following a Problem / Method / Result structure.
+TRANSFORM_PROMPT = """\
+Transform this structural model into a 3-panel infographic.
 
-Extract:
-- A headline (max 8 words, attention-grabbing)
+STRUCTURAL MODEL:
+{structural_model}
+
+STRICT RULES:
+- Headline: maximum 8 words, attention-grabbing like a magazine cover.
 - Exactly 3 sections:
-  1. "Problema" — what challenge or question is addressed (icon: relevant emoji)
-  2. "Mètode" — how it is approached or solved (icon: relevant emoji)
-  3. "Resultat" — what outcome or insight emerges (icon: relevant emoji)
-  Each section has:
+  1. "Problema" — the challenge or question (mapped from problem/thesis/concept in the model)
+  2. "Mètode" — the approach or method (mapped from method/argument/component)
+  3. "Resultat" — the outcome or insight (mapped from result/conclusion/consequence)
+- Each section has:
   - title: exactly "Problema", "Mètode", or "Resultat"
   - icon: one expressive emoji
-  - bullets: 2-4 short bullet points (max 10 words each)
-- A closing phrase (max 12 words, memorable takeaway)
+  - bullets: 2-4 short bullets. MAXIMUM 10 words each.
+- Closing phrase: maximum 12 words, memorable and quotable.
+- Bullets should be crisp and scannable, not narrative.
+- Oriented toward communication, not study.
 
-Style guide:
-- Headlines should grab attention like a magazine cover
-- Bullets should be crisp and scannable
-- Closing phrase should be quotable and inspiring
-
-Return ONLY valid JSON matching this exact schema (no other text):
+Return ONLY valid JSON:
 {{
   "type": "infografia",
-  "headline": "Attention-grabbing headline",
+  "headline": "Attention-grabbing headline (max 8 words)",
   "sections": [
     {{
       "title": "Problema",
       "icon": "emoji",
-      "bullets": ["Short point 1", "Short point 2"]
+      "bullets": ["Short point (max 10 words)", "Short point"]
     }},
     {{
       "title": "Mètode",
       "icon": "emoji",
-      "bullets": ["Short point 1", "Short point 2"]
+      "bullets": ["Short point (max 10 words)", "Short point"]
     }},
     {{
       "title": "Resultat",
       "icon": "emoji",
-      "bullets": ["Short point 1", "Short point 2"]
+      "bullets": ["Short point (max 10 words)", "Short point"]
     }}
   ],
-  "closing_phrase": "Memorable final takeaway"
-}}
+  "closing_phrase": "Memorable final takeaway (max 12 words)"
+}}"""
+
+# Legacy prompts kept for backward compatibility
+SYSTEM_PROMPT = TRANSFORM_SYSTEM
+EXTRACTION_PROMPT = """\
+Turn this transcript into a 3-panel infographic.
+
+Extract headline, 3 sections (Problema/Mètode/Resultat), closing phrase.
+Return ONLY valid JSON.
 
 TRANSCRIPT:
 {transcript}"""
@@ -75,6 +87,8 @@ EXPECTED_TITLES = {"Problema", "Mètode", "Resultat"}
 
 class InfografiaFormat(VisualFormat):
     FORMAT_TYPE = "infografia"
+    TRANSFORM_SYSTEM = TRANSFORM_SYSTEM
+    TRANSFORM_PROMPT = TRANSFORM_PROMPT
     SYSTEM_PROMPT = SYSTEM_PROMPT
     EXTRACTION_PROMPT = EXTRACTION_PROMPT
     FILE_PREFIX = "infografia"

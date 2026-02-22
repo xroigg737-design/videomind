@@ -2,6 +2,8 @@
 
 Generates a mind-map with a central node and radiating branches,
 rendered as an SVG with curved connections.
+
+Phase 3 transform: receives a structural model and produces a mindmap JSON.
 """
 
 import math
@@ -15,25 +17,58 @@ from pipeline.formats.validators import (
     check_word_count,
 )
 
-SYSTEM_PROMPT = """You are an expert at distilling complex content into clear, hierarchical mind maps. \
-You organize ideas into a central theme with branches and sub-branches. Your output is structured, \
-direct, and uses infinitive verbs. You never use metaphors or decorative language — only clear, \
-actionable concepts. You produce clean JSON suitable for rendering as a radial mind map."""
+TRANSFORM_SYSTEM = """\
+You are an expert at creating clear, hierarchical mind maps from structured data. \
+You organize ideas into a central theme with branches and sub-branches. \
+You are direct, precise, and use infinitive verbs. \
+You NEVER use metaphors, emojis, or decorative language — only clear, actionable concepts. \
+You strictly respect word limits. You produce clean JSON."""
 
+TRANSFORM_PROMPT = """\
+Transform this structural model into a hierarchical mind map.
+
+STRUCTURAL MODEL:
+{structural_model}
+
+STRICT RULES:
+- Central node = the thesis. Maximum 6 words.
+- 3 to 5 main branches (one per nuclear idea). NEVER more than 5.
+- Each branch title: maximum 8 words. Use infinitive verbs.
+- Each branch has EXACTLY 2 children (from the sub_ideas). Maximum 8 words each.
+- Maximum depth: 2 levels (branches + children). No grandchildren.
+- No metaphors. No emojis. No decorative language.
+- No long phrases. If a concept exceeds the word limit, rewrite it shorter.
+
+Return ONLY valid JSON:
+{{
+  "type": "mindmap",
+  "central_node": "Thesis (max 6 words)",
+  "branches": [
+    {{
+      "title": "Branch title (max 8 words)",
+      "children": [
+        {{"title": "Sub-idea (max 8 words)", "children": []}},
+        {{"title": "Sub-idea (max 8 words)", "children": []}}
+      ]
+    }}
+  ]
+}}"""
+
+# Legacy prompts kept for backward compatibility
+SYSTEM_PROMPT = TRANSFORM_SYSTEM
 EXTRACTION_PROMPT = """\
 Turn this transcript into a hierarchical mind map.
 
 Extract:
 - A central node (the main topic, max 6 words)
-- 5-7 main branches, each with:
-  - A title (max 6-8 words, use infinitive verbs, e.g. "Identify key patterns")
-  - 0-4 children sub-ideas, each with:
-    - A title (max 6-8 words)
-    - Optionally further children (max depth: 3 levels total)
+- 3-5 main branches, each with:
+  - A title (max 8 words, use infinitive verbs)
+  - 2 children sub-ideas, each with:
+    - A title (max 8 words)
 
 Style guide:
 - Be direct and structured, like a textbook outline
-- Use infinitive verbs (e.g. "Analyze", "Define", "Implement")
+- Use infinitive verbs
 - No metaphors, no emojis, no decorative language
 - Each node should be a clear, standalone concept
 
@@ -45,10 +80,8 @@ Return ONLY valid JSON matching this exact schema (no other text):
     {{
       "title": "Branch title",
       "children": [
-        {{
-          "title": "Sub-idea",
-          "children": []
-        }}
+        {{"title": "Sub-idea", "children": []}},
+        {{"title": "Sub-idea", "children": []}}
       ]
     }}
   ]
@@ -60,6 +93,8 @@ TRANSCRIPT:
 
 class MindmapFormat(VisualFormat):
     FORMAT_TYPE = "mindmap"
+    TRANSFORM_SYSTEM = TRANSFORM_SYSTEM
+    TRANSFORM_PROMPT = TRANSFORM_PROMPT
     SYSTEM_PROMPT = SYSTEM_PROMPT
     EXTRACTION_PROMPT = EXTRACTION_PROMPT
     FILE_PREFIX = "mindmap_tree"
@@ -69,7 +104,7 @@ class MindmapFormat(VisualFormat):
     def validate(self, data: dict) -> list:
         warnings = []
         branches = data.get("branches", [])
-        w = check_list_length(branches, 5, 7, "branches")
+        w = check_list_length(branches, 3, 5, "branches")
         if w:
             warnings.append(w)
 
@@ -77,18 +112,21 @@ class MindmapFormat(VisualFormat):
         if w:
             warnings.append(w)
 
-        def _check_nodes(node):
-            w = check_word_count(node.get("title", ""), 8, f"node '{node.get('title', '?')}'")
-            if w:
-                warnings.append(w)
-            w = check_max_depth(node, 3)
-            if w:
-                warnings.append(w)
-            for child in node.get("children", []):
-                _check_nodes(child)
-
         for branch in branches:
-            _check_nodes(branch)
+            w = check_word_count(branch.get("title", ""), 8, f"branch '{branch.get('title', '?')}'")
+            if w:
+                warnings.append(w)
+            children = branch.get("children", [])
+            w = check_list_length(children, 0, 2, f"children of '{branch.get('title', '?')}'")
+            if w:
+                warnings.append(w)
+            for child in children:
+                w = check_word_count(child.get("title", ""), 8, f"child '{child.get('title', '?')}'")
+                if w:
+                    warnings.append(w)
+                w = check_max_depth(child, 2)
+                if w:
+                    warnings.append(w)
 
         return warnings
 
@@ -180,29 +218,6 @@ class MindmapFormat(VisualFormat):
                     if len(child_title) > 28:
                         child_title = child_title[:25] + "..."
                     node_parts.append(self._svg_node(child_x, child_y, child_title, color, is_branch=False))
-
-                    # Grandchildren (depth 3)
-                    for k, gc in enumerate(child.get("children", [])[:3]):
-                        gc_angle = ca + (k - 1) * 0.25
-                        gc_r = 80
-                        gc_x = child_x + gc_r * math.cos(gc_angle)
-                        gc_y = child_y + gc_r * math.sin(gc_angle)
-
-                        line_parts.append(
-                            f'<line x1="{child_x:.0f}" y1="{child_y:.0f}" x2="{gc_x:.0f}" y2="{gc_y:.0f}" '
-                            f'stroke="{color}" stroke-width="1" opacity="0.35" stroke-dasharray="4,3" '
-                            f'filter="url(#sketchy)"/>'
-                        )
-
-                        gc_title = xml_escape(gc.get("title", ""))
-                        if len(gc_title) > 22:
-                            gc_title = gc_title[:19] + "..."
-                        node_parts.append(
-                            f'<text x="{gc_x:.0f}" y="{gc_y:.0f}" '
-                            f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
-                            f'font-size="12" fill="{color}" text-anchor="middle" '
-                            f'dominant-baseline="middle" opacity="0.8">{gc_title}</text>'
-                        )
 
         # Central node (drawn on top of everything)
         central_node = (

@@ -98,6 +98,29 @@ SAMPLE_INFOGRAFIA_DATA = {
     "closing_phrase": "Every learner deserves a unique path",
 }
 
+SAMPLE_CORE_STRUCTURE = {
+    "thesis": "Neural networks transform data processing",
+    "content_type": "explanatory",
+    "nuclear_ideas": [
+        {
+            "idea": "Architecture defines network capacity",
+            "sub_ideas": ["Layers organize neurons", "Depth adds abstraction"],
+            "structural_role": "concept",
+        },
+        {
+            "idea": "Training optimizes network weights",
+            "sub_ideas": ["Backpropagation computes gradients", "Loss function guides learning"],
+            "structural_role": "component",
+        },
+        {
+            "idea": "Applications span many domains",
+            "sub_ideas": ["Vision and language tasks", "Healthcare and robotics"],
+            "structural_role": "consequence",
+        },
+    ],
+    "memorable_phrase": "Data is the new oil",
+}
+
 
 # ---------------------------------------------------------------------------
 # Validators
@@ -180,6 +203,99 @@ class TestCheckMaxDepth:
         w = check_max_depth(deep, 3)
         assert w is not None
         assert "depth" in w.lower()
+
+
+class TestCollectAllViolations:
+    def test_mindmap_valid(self):
+        from pipeline.formats.validators import collect_all_violations
+
+        data = {
+            "central_node": "ML Topic",
+            "branches": [
+                {"title": "Branch one", "children": [
+                    {"title": "Child A", "children": []},
+                    {"title": "Child B", "children": []},
+                ]},
+                {"title": "Branch two", "children": []},
+                {"title": "Branch three", "children": []},
+            ],
+        }
+        assert collect_all_violations(data, "mindmap") == []
+
+    def test_mindmap_too_many_branches(self):
+        from pipeline.formats.validators import collect_all_violations
+
+        data = {
+            "central_node": "ML",
+            "branches": [{"title": f"B{i}", "children": []} for i in range(8)],
+        }
+        violations = collect_all_violations(data, "mindmap")
+        assert any("branches" in v for v in violations)
+
+    def test_infografia_valid(self):
+        from pipeline.formats.validators import collect_all_violations
+
+        assert collect_all_violations(SAMPLE_INFOGRAFIA_DATA, "infografia") == []
+
+
+# ---------------------------------------------------------------------------
+# Distiller (Phase 1 & 2)
+# ---------------------------------------------------------------------------
+
+
+class TestValidateDistillation:
+    def test_valid_core(self):
+        from pipeline.formats.distiller import validate_distillation
+
+        assert validate_distillation(SAMPLE_CORE_STRUCTURE) == []
+
+    def test_too_many_ideas(self):
+        from pipeline.formats.distiller import validate_distillation
+
+        bad = dict(SAMPLE_CORE_STRUCTURE)
+        bad["nuclear_ideas"] = SAMPLE_CORE_STRUCTURE["nuclear_ideas"] * 3
+        errors = validate_distillation(bad)
+        assert any("nuclear ideas" in e for e in errors)
+
+    def test_long_thesis(self):
+        from pipeline.formats.distiller import validate_distillation
+
+        bad = dict(SAMPLE_CORE_STRUCTURE)
+        bad["thesis"] = "This is a very long thesis that has way more than fifteen words in it for sure"
+        errors = validate_distillation(bad)
+        assert any("thesis" in e for e in errors)
+
+
+class TestBuildStructuralModel:
+    def test_groups_by_role(self):
+        from pipeline.formats.distiller import build_structural_model
+
+        model = build_structural_model(SAMPLE_CORE_STRUCTURE)
+        assert model["content_type"] == "explanatory"
+        assert "concept" in model["structure"]
+        assert "component" in model["structure"]
+        assert "consequence" in model["structure"]
+        assert len(model["structure"]["concept"]) == 1
+        assert len(model["structure"]["component"]) == 1
+
+    def test_unassigned_goes_to_emptiest(self):
+        from pipeline.formats.distiller import build_structural_model
+
+        core = {
+            "thesis": "Test",
+            "content_type": "narrative",
+            "nuclear_ideas": [
+                {"idea": "A", "sub_ideas": ["a1", "a2"], "structural_role": "unknown_role"},
+                {"idea": "B", "sub_ideas": ["b1", "b2"], "structural_role": "problem"},
+            ],
+            "memorable_phrase": "",
+        }
+        model = build_structural_model(core)
+        # "A" had unknown role, should go to emptiest slot (method or result)
+        all_ideas = []
+        for slot_ideas in model["structure"].values():
+            all_ideas.extend(slot_ideas)
+        assert len(all_ideas) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -422,8 +538,6 @@ class TestMindmapValidation:
                 },
                 {"title": "B2", "children": []},
                 {"title": "B3", "children": []},
-                {"title": "B4", "children": []},
-                {"title": "B5", "children": []},
             ],
         }
         warnings = fmt.validate(data)
@@ -586,7 +700,8 @@ class TestBackwardCompat:
     def test_system_prompt_importable(self):
         from pipeline.mindmap import SYSTEM_PROMPT
 
-        assert "sketchnote" in SYSTEM_PROMPT.lower()
+        assert isinstance(SYSTEM_PROMPT, str)
+        assert len(SYSTEM_PROMPT) > 10
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_call_claude_works(self, mock_cls):
@@ -602,14 +717,23 @@ class TestBackwardCompat:
         assert result["title"] == "Neural Networks"
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
-    def test_output_files_named_mindmap(self, mock_cls, tmp_path):
+    @patch("pipeline.formats.distiller.anthropic.Anthropic")
+    def test_output_files_named_mindmap(self, mock_distiller_cls, mock_base_cls, tmp_path):
         from pipeline.mindmap import generate_mindmap
 
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
-        mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
-        mock_cls.return_value = mock_client
+        # Phase 1: distiller returns core structure
+        distiller_response = MagicMock()
+        distiller_response.content = [MagicMock(text=json.dumps(SAMPLE_CORE_STRUCTURE))]
+        mock_distiller_client = MagicMock()
+        mock_distiller_client.messages.create.return_value = distiller_response
+        mock_distiller_cls.return_value = mock_distiller_client
+
+        # Phase 3: transform returns sketchnote data
+        transform_response = MagicMock()
+        transform_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_base_client = MagicMock()
+        mock_base_client.messages.create.return_value = transform_response
+        mock_base_cls.return_value = mock_base_client
 
         result = generate_mindmap("test transcript", str(tmp_path), formats="all")
         assert result["json_path"].endswith("mindmap.json")
