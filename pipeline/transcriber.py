@@ -55,6 +55,7 @@ def transcribe_audio(
     output_dir = os.path.dirname(audio_path)
     transcript_path = os.path.join(output_dir, "transcript.txt")
     srt_path = os.path.join(output_dir, "transcript.srt")
+    lang_path = os.path.join(output_dir, "language.txt")
 
     # Check if already transcribed
     if os.path.exists(transcript_path) and os.path.exists(srt_path):
@@ -63,7 +64,11 @@ def transcribe_audio(
             text = f.read()
         with open(srt_path, "r", encoding="utf-8") as f:
             srt = f.read()
-        return {"text": text, "srt": srt, "language": "unknown", "segments": []}
+        cached_lang = "unknown"
+        if os.path.exists(lang_path):
+            with open(lang_path, "r", encoding="utf-8") as f:
+                cached_lang = f.read().strip() or "unknown"
+        return {"text": text, "srt": srt, "language": cached_lang, "segments": []}
 
     print(f"  Loading Whisper model: {model_name} (device: cpu)")
     model = whisper.load_model(model_name, device="cpu")
@@ -93,6 +98,9 @@ def transcribe_audio(
     with open(srt_path, "w", encoding="utf-8") as f:
         f.write(srt_content)
     print(f"  Saved: {srt_path}")
+
+    with open(lang_path, "w", encoding="utf-8") as f:
+        f.write(detected_lang)
 
     print(f"  Detected language: {detected_lang}")
     print(f"  Transcript length: {len(full_text)} characters")

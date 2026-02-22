@@ -172,6 +172,31 @@ class TestTranscribeAudioCached:
         assert result["language"] == "unknown"
         assert result["segments"] == []
 
+    def test_loads_cached_language(self, tmp_path):
+        from pipeline.transcriber import transcribe_audio
+
+        audio_dir = tmp_path / "video"
+        audio_dir.mkdir()
+        (audio_dir / "audio.mp3").write_text("")
+        (audio_dir / "transcript.txt").write_text("texto", encoding="utf-8")
+        (audio_dir / "transcript.srt").write_text("1\n00:00:00,000 --> 00:00:01,000\nHola", encoding="utf-8")
+        (audio_dir / "language.txt").write_text("es", encoding="utf-8")
+
+        result = transcribe_audio(str(audio_dir / "audio.mp3"))
+        assert result["language"] == "es"
+
+    def test_falls_back_to_unknown_without_language_file(self, tmp_path):
+        from pipeline.transcriber import transcribe_audio
+
+        audio_dir = tmp_path / "video"
+        audio_dir.mkdir()
+        (audio_dir / "audio.mp3").write_text("")
+        (audio_dir / "transcript.txt").write_text("text", encoding="utf-8")
+        (audio_dir / "transcript.srt").write_text("1\n00:00:00,000 --> 00:00:01,000\nHi", encoding="utf-8")
+
+        result = transcribe_audio(str(audio_dir / "audio.mp3"))
+        assert result["language"] == "unknown"
+
 
 # ---------------------------------------------------------------------------
 # pipeline/mindmap.py – _generate_markdown
