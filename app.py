@@ -4,7 +4,6 @@
 import os
 import sys
 import threading
-import time
 import uuid
 from datetime import datetime
 from queue import Queue, Empty
@@ -314,6 +313,6 @@ def serve_output(filepath):
 
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    print(f"VideoMind web: http://localhost:5000")
+    print("VideoMind web: http://localhost:5000")
     print(f"Output dir:    {OUTPUT_DIR}")
     app.run(debug=True, host="0.0.0.0", port=5000, threaded=True)

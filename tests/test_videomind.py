@@ -348,8 +348,6 @@ class TestGenerateMindmap:
         mock_open(read_data="/* vis-network */"),
     )
     def test_generates_all_formats(self, mock_claude, tmp_path):
-        from pipeline.mindmap import generate_mindmap
-
         # We need real file writes, so don't mock open globally.
         # Instead, let's use a different approach.
         pass
