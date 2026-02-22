@@ -174,13 +174,17 @@ def _generate_html(data: dict) -> str:
 <script>{vis_network_js}</script>
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  html, body {{
+    height: 100%;
+    width: 100%;
+  }}
   body {{
     font-family: 'Segoe UI', Arial, sans-serif;
     background: #1a1a2e;
     color: #eee;
-    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }}
   header {{
     padding: 16px 24px;
@@ -189,6 +193,7 @@ def _generate_html(data: dict) -> str:
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-shrink: 0;
   }}
   header h1 {{
     font-size: 1.3rem;
@@ -204,6 +209,7 @@ def _generate_html(data: dict) -> str:
   #network {{
     flex: 1;
     width: 100%;
+    min-height: 0;
   }}
   .tooltip {{
     font-size: 0.85rem;
@@ -218,36 +224,55 @@ def _generate_html(data: dict) -> str:
 </header>
 <div id="network"></div>
 <script>
-var nodes = new vis.DataSet({nodes_json});
-var edges = new vis.DataSet({edges_json});
-var container = document.getElementById("network");
-var data = {{ nodes: nodes, edges: edges }};
-var options = {{
-  physics: {{
-    solver: "forceAtlas2Based",
-    forceAtlas2Based: {{
-      gravitationalConstant: -80,
-      centralGravity: 0.01,
-      springLength: 150,
-      springConstant: 0.04,
-      damping: 0.4
+function initNetwork() {{
+  var container = document.getElementById("network");
+  var headerEl = document.querySelector("header");
+  var h = window.innerHeight - headerEl.offsetHeight;
+  if (h < 200) h = 400;
+  container.style.height = h + "px";
+
+  var nodes = new vis.DataSet({nodes_json});
+  var edges = new vis.DataSet({edges_json});
+  var data = {{ nodes: nodes, edges: edges }};
+  var options = {{
+    physics: {{
+      solver: "forceAtlas2Based",
+      forceAtlas2Based: {{
+        gravitationalConstant: -80,
+        centralGravity: 0.01,
+        springLength: 150,
+        springConstant: 0.04,
+        damping: 0.4
+      }},
+      stabilization: {{ iterations: 200 }}
     }},
-    stabilization: {{ iterations: 200 }}
-  }},
-  interaction: {{
-    hover: true,
-    tooltipDelay: 200,
-    zoomView: true,
-    dragView: true
-  }},
-  layout: {{
-    improvedLayout: true
-  }}
-}};
-var network = new vis.Network(container, data, options);
-network.once("stabilizationIterationsDone", function() {{
-  network.fit({{ animation: true }});
-}});
+    interaction: {{
+      hover: true,
+      tooltipDelay: 200,
+      zoomView: true,
+      dragView: true
+    }},
+    layout: {{
+      improvedLayout: true
+    }}
+  }};
+  var network = new vis.Network(container, data, options);
+  network.once("stabilizationIterationsDone", function() {{
+    network.fit({{ animation: true }});
+  }});
+  window.addEventListener("resize", function() {{
+    var newH = window.innerHeight - headerEl.offsetHeight;
+    if (newH < 200) newH = 400;
+    container.style.height = newH + "px";
+    network.redraw();
+    network.fit();
+  }});
+}}
+if (document.readyState === "complete") {{
+  initNetwork();
+}} else {{
+  window.addEventListener("load", initNetwork);
+}}
 </script>
 </body>
 </html>"""
