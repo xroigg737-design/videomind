@@ -51,7 +51,8 @@ def download_audio(url: str, output_dir: str) -> list[dict]:
     os.makedirs(output_dir, exist_ok=True)
 
     # First pass: extract info to discover entries
-    with yt_dlp.YoutubeDL({"quiet": True, "extract_flat": True}) as ydl:
+    with yt_dlp.YoutubeDL({"quiet": True, "extract_flat": True, "extractor_args": {"youtube": {"player_client": ["web"]}}}) as ydl:
+
         info = ydl.extract_info(url, download=False)
 
     entries = info.get("entries", [info])  # playlist or single video
@@ -73,6 +74,7 @@ def download_audio(url: str, output_dir: str) -> list[dict]:
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": os.path.join(video_dir, "audio.%(ext)s"),
+            "extractor_args": {"youtube": {"player_client": ["web"]}},
             "postprocessors": [
                 {
                     "key": "FFmpegExtractAudio",
