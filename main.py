@@ -44,7 +44,7 @@ Examples:
     source.add_argument(
         "--folder",
         type=str,
-        help="Local folder path containing video files",
+        help="Local folder containing video files, or a single video file path",
     )
 
     parser.add_argument(
@@ -150,6 +150,15 @@ def main():
             videos = download_audio(args.url, output_dir)
         except Exception as e:
             print(f"Error downloading from URL: {e}")
+            sys.exit(1)
+    elif os.path.isfile(os.path.abspath(args.folder)):
+        filepath = os.path.abspath(args.folder)
+        try:
+            from pipeline.extractor import extract_audio_from_file
+            result = extract_audio_from_file(filepath, output_dir)
+            videos = [result] if result else []
+        except Exception as e:
+            print(f"Error extracting audio from file: {e}")
             sys.exit(1)
     else:
         folder = os.path.abspath(args.folder)

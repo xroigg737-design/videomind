@@ -95,6 +95,10 @@ def _run_job(job_id):
 
         if source_type == "url":
             videos = download_audio(job["url"], OUTPUT_DIR)
+        elif os.path.isfile(job["folder"]):
+            from pipeline.extractor import extract_audio_from_file
+            result = extract_audio_from_file(job["folder"], OUTPUT_DIR)
+            videos = [result] if result else []
         else:
             videos = extract_audio_from_folder(job["folder"], OUTPUT_DIR)
 
@@ -216,9 +220,9 @@ def process():
     else:
         folder = request.form.get("folder", "").strip()
         if not folder:
-            return render_template("index.html", error="Cal introduir la ruta d'una carpeta.")
-        if not os.path.isdir(folder):
-            return render_template("index.html", error=f"La carpeta no existeix: {folder}")
+            return render_template("index.html", error="Cal introduir la ruta d'una carpeta o fitxer.")
+        if not os.path.isdir(folder) and not os.path.isfile(folder):
+            return render_template("index.html", error=f"La ruta no existeix: {folder}")
         source_val = {"folder": folder}
 
     # Create job
