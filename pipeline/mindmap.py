@@ -1,54 +1,56 @@
-"""Concept map generation using Claude API.
+"""Sketchnote generation using Claude API.
 
-Analyzes a transcript and produces structured mind map output
-in Markdown, HTML, and JSON formats.
+Analyzes a transcript and produces structured sketchnote output
+in Markdown, HTML (SVG), and JSON formats.
 """
 
 import json
 import os
-import html as html_mod
+from xml.sax.saxutils import escape as xml_escape
 
 import anthropic
 
 from config import ANTHROPIC_API_KEY, CLAUDE_MODEL
 
-# Path to bundled vis-network library for self-contained HTML output
-_VIS_NETWORK_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vis-network.min.js")
-
 # Maximum transcript characters to send to Claude (to stay within context limits)
 MAX_TRANSCRIPT_LENGTH = 100_000
 
 SYSTEM_PROMPT = """You are an expert at analyzing educational and informational content \
-and creating structured concept maps / mind maps. You extract key ideas, organize them \
-hierarchically, and identify relationships between concepts."""
+and creating structured visual sketchnotes. You extract key ideas, organize them \
+into thematic sections, and identify relationships between concepts. \
+You produce clean JSON output suitable for rendering as a hand-drawn style infographic."""
 
 EXTRACTION_PROMPT = """\
-Analyze the following transcript and create a structured concept map.
+Analyze the following transcript and create a structured sketchnote.
 
 Extract:
-- The central topic / main idea
-- 5-8 main branches (key concepts or themes)
-- 2-4 sub-nodes for each branch (details, examples, facts)
-- Use meaningful, concise labels
+- A short title summarizing the content
+- 4-8 thematic sections, each with:
+  - A unique id (s1, s2, ...)
+  - A short heading (2-4 words)
+  - An emoji icon representing the section
+  - 2-4 concise key points (bullet-length)
+  - A hex color from the palette below
+- 1-4 connections between related sections
+
+Use these colors for sections: #4A90D9, #E67E22, #2ECC71, #9B59B6, #E74C3C, #1ABC9C, #F39C12, #3498DB.
 
 Return ONLY valid JSON matching this exact schema (no other text):
 {{
-  "title": "string - central topic",
-  "nodes": [
+  "title": "string - main topic",
+  "sections": [
     {{
-      "id": "string - unique id like 'n1', 'n1.1'",
-      "label": "string - concise label",
-      "parent": "string | null - parent node id, null for root",
-      "level": 0,
-      "color": "string - hex color code",
-      "notes": "string - optional detail or explanation"
+      "id": "s1",
+      "heading": "short heading",
+      "icon": "emoji",
+      "points": ["key point 1", "key point 2"],
+      "color": "#hex"
     }}
+  ],
+  "connections": [
+    {{ "from": "s1", "to": "s2", "label": "relationship" }}
   ]
 }}
-
-Level 0 = root (one node: the central topic), level 1 = main branches, level 2 = sub-nodes.
-Use a consistent color palette: assign the same color to a branch and all its children.
-Use these colors for branches: #4A90D9, #E67E22, #2ECC71, #9B59B6, #E74C3C, #1ABC9C, #F39C12, #3498DB.
 
 TRANSCRIPT:
 {transcript}"""
@@ -95,83 +97,156 @@ def _call_claude(transcript: str) -> dict:
 
 
 def _generate_markdown(data: dict) -> str:
-    """Generate a Markmap-compatible Markdown mind map."""
+    """Generate a Markdown sketchnote summary."""
     lines = [f"# {data['title']}\n"]
 
-    nodes_by_id = {n["id"]: n for n in data["nodes"]}
-    children_of = {}
-    for n in data["nodes"]:
-        parent = n["parent"]
-        if parent is not None:
-            children_of.setdefault(parent, []).append(n)
+    for section in data.get("sections", []):
+        icon = section.get("icon", "")
+        heading = section.get("heading", "")
+        lines.append(f"## {icon} {heading}\n")
+        for point in section.get("points", []):
+            lines.append(f"- {point}")
+        lines.append("")
 
-    def _render(node_id: str, depth: int):
-        node = nodes_by_id[node_id]
-        if depth > 0:  # Skip root (already rendered as H1)
-            indent = "  " * (depth - 1)
-            lines.append(f"{indent}- **{node['label']}**")
-            if node.get("notes"):
-                lines.append(f"{indent}  - {node['notes']}")
-        for child in children_of.get(node_id, []):
-            _render(child["id"], depth + 1)
-
-    # Find root node
-    root = next((n for n in data["nodes"] if n["parent"] is None), None)
-    if root:
-        _render(root["id"], 0)
+    connections = data.get("connections", [])
+    if connections:
+        lines.append("## Connections\n")
+        for conn in connections:
+            lines.append(f"- {conn['from']} → {conn['to']}: {conn.get('label', '')}")
+        lines.append("")
 
     return "\n".join(lines) + "\n"
 
 
+def _layout_sections(sections: list) -> list:
+    """Compute grid positions for sections. Returns list of (x, y, w, h) tuples."""
+    n = len(sections)
+    cols = 2 if n <= 4 else 3
+    rows = (n + cols - 1) // cols
+
+    pad_x, pad_y = 40, 100  # padding from edges; top padding for title
+    cell_w = (1000 - 2 * pad_x) // cols
+    cell_h = 220
+    box_w = cell_w - 30
+    box_h = cell_h - 20
+
+    positions = []
+    for i in range(n):
+        col = i % cols
+        row = i // cols
+        x = pad_x + col * cell_w + 15
+        y = pad_y + row * cell_h + 10
+        positions.append((x, y, box_w, box_h))
+
+    return positions, rows, cell_h
+
+
+def _svg_connection(conn: dict, sections: list, positions: list) -> str:
+    """Generate an SVG path for a connection arrow between two sections."""
+    id_to_idx = {s["id"]: i for i, s in enumerate(sections)}
+    from_idx = id_to_idx.get(conn["from"])
+    to_idx = id_to_idx.get(conn["to"])
+    if from_idx is None or to_idx is None:
+        return ""
+
+    fx, fy, fw, fh = positions[from_idx]
+    tx, ty, tw, th = positions[to_idx]
+
+    # Center points
+    x1 = fx + fw // 2
+    y1 = fy + fh // 2
+    x2 = tx + tw // 2
+    y2 = ty + th // 2
+
+    # Control point for curve
+    cx = (x1 + x2) // 2 + (y2 - y1) // 4
+    cy = (y1 + y2) // 2 - (x2 - x1) // 4
+
+    label = xml_escape(conn.get("label", ""))
+    label_x = (x1 + x2) // 2
+    label_y = (y1 + y2) // 2 - 8
+
+    parts = [
+        f'<path d="M {x1} {y1} Q {cx} {cy} {x2} {y2}" '
+        f'stroke="#888" stroke-width="2" fill="none" '
+        f'marker-end="url(#arrowhead)" filter="url(#sketchy)" '
+        f'stroke-dasharray="6,3" opacity="0.6"/>',
+    ]
+    if label:
+        parts.append(
+            f'<text x="{label_x}" y="{label_y}" '
+            f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
+            f'font-size="13" fill="#888" text-anchor="middle">'
+            f'{label}</text>'
+        )
+    return "\n    ".join(parts)
+
+
 def _generate_html(data: dict) -> str:
-    """Generate a self-contained interactive HTML mind map using vis-network."""
-    nodes_js = []
-    edges_js = []
+    """Generate a self-contained HTML page with an SVG sketchnote."""
+    title = xml_escape(data.get("title", "Sketchnote"))
+    sections = data.get("sections", [])
+    connections = data.get("connections", [])
 
-    for n in data["nodes"]:
-        font_size = {0: 24, 1: 18}.get(n["level"], 14)
-        shape = "ellipse" if n["level"] == 0 else "box"
-        node_obj = {
-            "id": n["id"],
-            "label": n["label"],
-            "color": {
-                "background": n.get("color", "#4A90D9"),
-                "border": n.get("color", "#4A90D9"),
-                "highlight": {"background": "#FFD700", "border": "#FFA500"},
-            },
-            "font": {"size": font_size, "color": "#FFFFFF", "face": "Arial"},
-            "shape": shape,
-            "margin": 12,
-            "shadow": True,
-        }
-        if n.get("notes"):
-            node_obj["title"] = html_mod.escape(n["notes"])
-        nodes_js.append(node_obj)
+    positions, rows, cell_h = _layout_sections(sections)
+    svg_h = 100 + rows * cell_h + 40  # title area + grid + bottom padding
 
-        if n["parent"] is not None:
-            edges_js.append({
-                "from": n["parent"],
-                "to": n["id"],
-                "color": {"color": "#888888", "highlight": "#FFA500"},
-                "width": 2,
-                "smooth": {"type": "cubicBezier"},
-            })
+    # Build section boxes
+    section_svgs = []
+    for i, section in enumerate(sections):
+        x, y, w, h = positions[i]
+        color = xml_escape(section.get("color", "#4A90D9"))
+        icon = xml_escape(section.get("icon", ""))
+        heading = xml_escape(section.get("heading", ""))
+        points = section.get("points", [])
 
-    title_escaped = html_mod.escape(data["title"])
-    nodes_json = json.dumps(nodes_js, indent=2)
-    edges_json = json.dumps(edges_js, indent=2)
+        # Box with sketchy filter
+        box = (
+            f'<g transform="translate({x},{y})">\n'
+            f'      <rect x="0" y="0" width="{w}" height="{h}" rx="12" ry="12" '
+            f'fill="white" stroke="{color}" stroke-width="2.5" filter="url(#sketchy)"/>\n'
+            f'      <text x="16" y="32" font-family="\'Caveat\', \'Segoe Print\', cursive" '
+            f'font-size="22" font-weight="bold" fill="{color}">'
+            f'{icon} {heading}</text>\n'
+        )
 
-    # Load vis-network library for inline embedding
-    with open(_VIS_NETWORK_PATH, "r", encoding="utf-8") as f:
-        vis_network_js = f.read()
+        # Bullet points
+        line_y = 58
+        for point in points[:4]:
+            escaped = xml_escape(point)
+            # Truncate long points to fit in box
+            if len(escaped) > 50:
+                escaped = escaped[:47] + "..."
+            box += (
+                f'      <text x="20" y="{line_y}" '
+                f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
+                f'font-size="15" fill="#444">'
+                f'• {escaped}</text>\n'
+            )
+            line_y += 24
+
+        box += "    </g>"
+        section_svgs.append(box)
+
+    # Build connection arrows
+    conn_svgs = []
+    for conn in connections:
+        svg = _svg_connection(conn, sections, positions)
+        if svg:
+            conn_svgs.append(svg)
+
+    sections_markup = "\n    ".join(section_svgs)
+    connections_markup = "\n    ".join(conn_svgs)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{title_escaped} - VideoMind Concept Map</title>
-<script>{vis_network_js}</script>
+<title>{title} - VideoMind Sketchnote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" rel="stylesheet">
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   html, body {{
@@ -180,11 +255,11 @@ def _generate_html(data: dict) -> str:
   }}
   body {{
     font-family: 'Segoe UI', Arial, sans-serif;
-    background: #1a1a2e;
-    color: #eee;
+    background: #FFFEF9;
+    color: #333;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: auto;
   }}
   header {{
     padding: 16px 24px;
@@ -198,82 +273,62 @@ def _generate_html(data: dict) -> str:
   header h1 {{
     font-size: 1.3rem;
     font-weight: 600;
+    color: #eee;
   }}
   header .badge {{
     background: #e94560;
+    color: #fff;
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
   }}
-  #network {{
+  .sketch-container {{
     flex: 1;
-    width: 100%;
-    min-height: 0;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
   }}
-  .tooltip {{
-    font-size: 0.85rem;
-    max-width: 300px;
+  svg {{
+    max-width: 100%;
+    height: auto;
   }}
 </style>
 </head>
 <body>
 <header>
-  <h1>{title_escaped}</h1>
+  <h1>{title}</h1>
   <span class="badge">VideoMind</span>
 </header>
-<div id="network"></div>
-<script>
-function initNetwork() {{
-  var container = document.getElementById("network");
-  var headerEl = document.querySelector("header");
-  var h = window.innerHeight - headerEl.offsetHeight;
-  if (h < 200) h = 400;
-  container.style.height = h + "px";
+<div class="sketch-container">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 {svg_h}" width="1000" height="{svg_h}">
+    <defs>
+      <filter id="sketchy" x="-2%" y="-2%" width="104%" height="104%">
+        <feTurbulence type="turbulence" baseFrequency="0.03" numOctaves="3" result="noise" seed="2"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.5" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#888"/>
+      </marker>
+    </defs>
 
-  var nodes = new vis.DataSet({nodes_json});
-  var edges = new vis.DataSet({edges_json});
-  var data = {{ nodes: nodes, edges: edges }};
-  var options = {{
-    physics: {{
-      solver: "forceAtlas2Based",
-      forceAtlas2Based: {{
-        gravitationalConstant: -80,
-        centralGravity: 0.01,
-        springLength: 150,
-        springConstant: 0.04,
-        damping: 0.4
-      }},
-      stabilization: {{ iterations: 200 }}
-    }},
-    interaction: {{
-      hover: true,
-      tooltipDelay: 200,
-      zoomView: true,
-      dragView: true
-    }},
-    layout: {{
-      improvedLayout: true
-    }}
-  }};
-  var network = new vis.Network(container, data, options);
-  network.once("stabilizationIterationsDone", function() {{
-    network.fit({{ animation: true }});
-  }});
-  window.addEventListener("resize", function() {{
-    var newH = window.innerHeight - headerEl.offsetHeight;
-    if (newH < 200) newH = 400;
-    container.style.height = newH + "px";
-    network.redraw();
-    network.fit();
-  }});
-}}
-if (document.readyState === "complete") {{
-  initNetwork();
-}} else {{
-  window.addEventListener("load", initNetwork);
-}}
-</script>
+    <!-- Background -->
+    <rect width="1000" height="{svg_h}" fill="#FFFEF9" rx="8"/>
+
+    <!-- Title -->
+    <text x="500" y="60" font-family="'Caveat', 'Segoe Print', cursive"
+          font-size="36" font-weight="bold" fill="#16213e" text-anchor="middle"
+          filter="url(#sketchy)">{title}</text>
+    <line x1="250" y1="72" x2="750" y2="72" stroke="#e94560" stroke-width="2"
+          stroke-dasharray="8,4" opacity="0.5" filter="url(#sketchy)"/>
+
+    <!-- Connections (drawn behind boxes) -->
+    {connections_markup}
+
+    <!-- Section boxes -->
+    {sections_markup}
+  </svg>
+</div>
 </body>
 </html>"""
 
@@ -283,7 +338,7 @@ def generate_mindmap(
     output_dir: str,
     formats: str = "all",
 ) -> dict:
-    """Generate concept map files from a transcript.
+    """Generate sketchnote files from a transcript.
 
     Args:
         transcript: The full transcript text.

@@ -126,7 +126,7 @@ def _run_job(job_id):
             logger.log(f"Transcripcio completada ({len(transcript)} caracters).")
 
             # Step 3: Mind map
-            logger.step("mindmap", f"Generant mapa conceptual: {title}...")
+            logger.step("mindmap", f"Generant sketchnote: {title}...")
             if not validate_config():
                 logger.fail("ANTHROPIC_API_KEY no configurada. Revisa el fitxer .env.")
                 job["status"] = "failed"
