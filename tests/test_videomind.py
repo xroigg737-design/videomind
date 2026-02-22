@@ -209,6 +209,7 @@ SAMPLE_SKETCHNOTE_DATA = {
             "id": "s1",
             "heading": "Architecture",
             "icon": "\U0001f3d7\ufe0f",
+            "metaphor": "building with LEGO bricks",
             "points": ["Layers organize neurons", "Deep vs shallow networks"],
             "color": "#4A90D9",
         },
@@ -216,6 +217,7 @@ SAMPLE_SKETCHNOTE_DATA = {
             "id": "s2",
             "heading": "Training",
             "icon": "\U0001f3cb\ufe0f",
+            "metaphor": "training a muscle",
             "points": ["Backpropagation", "Gradient descent optimization"],
             "color": "#E67E22",
         },
@@ -252,6 +254,32 @@ class TestGenerateMarkdown:
 
         md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
         assert "feeds into" in md
+
+    def test_metaphor_appears_as_blockquote(self):
+        from pipeline.mindmap import _generate_markdown
+
+        md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
+        assert "> *building with LEGO bricks*" in md
+        assert "> *training a muscle*" in md
+
+    def test_no_metaphor_blockquote_when_missing(self):
+        from pipeline.mindmap import _generate_markdown
+
+        data_no_metaphor = {
+            "title": "Test",
+            "sections": [
+                {
+                    "id": "s1",
+                    "heading": "Heading",
+                    "icon": "📌",
+                    "points": ["Point one"],
+                    "color": "#4A90D9",
+                }
+            ],
+            "connections": [],
+        }
+        md = _generate_markdown(data_no_metaphor)
+        assert "> *" not in md
 
 
 # ---------------------------------------------------------------------------
@@ -306,6 +334,32 @@ class TestGenerateHtml:
         html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
         assert "arrowhead" in html
         assert "feeds into" in html
+
+    def test_metaphor_appears_italic_in_html(self):
+        from pipeline.mindmap import _generate_html
+
+        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
+        assert "font-style=\"italic\"" in html
+        assert "building with LEGO bricks" in html
+
+    def test_no_metaphor_italic_when_missing(self):
+        from pipeline.mindmap import _generate_html
+
+        data_no_metaphor = {
+            "title": "Test",
+            "sections": [
+                {
+                    "id": "s1",
+                    "heading": "Heading",
+                    "icon": "📌",
+                    "points": ["Point one"],
+                    "color": "#4A90D9",
+                }
+            ],
+            "connections": [],
+        }
+        html = _generate_html(data_no_metaphor)
+        assert "font-style=\"italic\"" not in html
 
 
 # ---------------------------------------------------------------------------

@@ -15,40 +15,48 @@ from config import ANTHROPIC_API_KEY, CLAUDE_MODEL
 # Maximum transcript characters to send to Claude (to stay within context limits)
 MAX_TRANSCRIPT_LENGTH = 100_000
 
-SYSTEM_PROMPT = """You are an expert at analyzing educational and informational content \
-and creating structured visual sketchnotes. You extract key ideas, organize them \
-into thematic sections, and identify relationships between concepts. \
-You produce clean JSON output suitable for rendering as a hand-drawn style infographic."""
+SYSTEM_PROMPT = """You are a visual thinker and sketchnote artist. You transform content into \
+vivid, hand-drawn-style visual notes. You think in images, metaphors, and short punchy phrases \
+-- never in paragraphs. You prioritize visual impact and memorability over academic structure. \
+You produce clean JSON output suitable for rendering as a sketchnote infographic."""
 
 EXTRACTION_PROMPT = """\
-Analyze the following transcript and create a structured sketchnote.
+Turn this transcript into a visual sketchnote. Think like an illustrator, not a professor.
 
 Extract:
-- A short title summarizing the content
-- 4-8 thematic sections, each with:
+- A punchy title (max 5 words, like a poster headline)
+- 4-8 visual blocks, each with:
   - A unique id (s1, s2, ...)
-  - A short heading (2-4 words)
-  - An emoji icon representing the section
-  - 2-4 concise key points (bullet-length)
+  - A short heading (2-4 words, fragment style)
+  - An expressive emoji icon (pick vivid, unexpected ones)
+  - A metaphor: one short visual metaphor for the block (e.g. "building bridges", "peeling the onion")
+  - 2-4 key points as fragments (max 5-6 words each, no full sentences)
   - A hex color from the palette below
-- 1-4 connections between related sections
+- 1-4 connections between related blocks with vivid labels (use verbs + imagery, e.g. "fuels", "unlocks", "feeds")
+
+Style guide:
+- Write like a whiteboard sketch, NOT an essay
+- Use action words and imagery over abstract nouns
+- Each point should feel like a sticky note, not a paragraph
+- Icons should be playful and expressive, not generic
 
 Use these colors for sections: #4A90D9, #E67E22, #2ECC71, #9B59B6, #E74C3C, #1ABC9C, #F39C12, #3498DB.
 
 Return ONLY valid JSON matching this exact schema (no other text):
 {{
-  "title": "string - main topic",
+  "title": "string - punchy topic",
   "sections": [
     {{
       "id": "s1",
       "heading": "short heading",
       "icon": "emoji",
-      "points": ["key point 1", "key point 2"],
+      "metaphor": "visual metaphor phrase",
+      "points": ["fragment point 1", "fragment point 2"],
       "color": "#hex"
     }}
   ],
   "connections": [
-    {{ "from": "s1", "to": "s2", "label": "relationship" }}
+    {{ "from": "s1", "to": "s2", "label": "vivid relationship" }}
   ]
 }}
 
@@ -111,6 +119,9 @@ def _generate_markdown(data: dict) -> str:
         icon = section.get("icon", "")
         heading = section.get("heading", "")
         lines.append(f"## {icon} {heading}\n")
+        metaphor = section.get("metaphor", "")
+        if metaphor:
+            lines.append(f"> *{metaphor}*\n")
         for point in section.get("points", []):
             lines.append(f"- {point}")
         lines.append("")
@@ -217,8 +228,20 @@ def _generate_html(data: dict) -> str:
             f'{icon} {heading}</text>\n'
         )
 
+        # Metaphor line (if present)
+        metaphor = section.get("metaphor", "")
+        if metaphor:
+            if len(metaphor) > 45:
+                metaphor = metaphor[:42] + "..."
+            escaped_metaphor = xml_escape(metaphor)
+            box += (
+                f'      <text x="16" y="52" font-family="\'Caveat\', \'Segoe Print\', cursive" '
+                f'font-size="13" fill="#888" font-style="italic">'
+                f'{escaped_metaphor}</text>\n'
+            )
+
         # Bullet points
-        line_y = 58
+        line_y = 72 if metaphor else 58
         for point in points[:4]:
             escaped = xml_escape(point)
             # Truncate long points to fit in box
