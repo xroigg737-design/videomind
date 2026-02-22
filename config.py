@@ -21,6 +21,7 @@ DEFAULT_WHISPER_MODEL = "base"
 DEFAULT_LANGUAGE = "auto"
 DEFAULT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 DEFAULT_FORMAT = "all"
+DEFAULT_VISUAL_TYPE = "sketchnote"
 
 # Audio extraction settings
 AUDIO_SAMPLE_RATE = 16000

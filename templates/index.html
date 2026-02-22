@@ -88,14 +88,25 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="format">Format de sortida</label>
-        <select name="format" id="format">
-          <option value="all" selected>Tots (HTML + Markdown + JSON)</option>
-          <option value="html">Nomes HTML</option>
-          <option value="md">Nomes Markdown</option>
-          <option value="json">Nomes JSON</option>
-        </select>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="visual_type">Tipus de visualitzacio</label>
+          <select name="visual_type" id="visual_type">
+            <option value="sketchnote" selected>Sketchnote</option>
+            <option value="mindmap">Mapa mental</option>
+            <option value="infografia">Infografia</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="format">Format de sortida</label>
+          <select name="format" id="format">
+            <option value="all" selected>Tots (HTML + Markdown + JSON)</option>
+            <option value="html">Nomes HTML</option>
+            <option value="md">Nomes Markdown</option>
+            <option value="json">Nomes JSON</option>
+          </select>
+        </div>
       </div>
 
       <button type="submit" class="btn" style="width: 100%;">Processar</button>

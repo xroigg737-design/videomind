@@ -75,6 +75,20 @@
   </div>
   {% endif %}
 
+  {% if files.mindmap_tree_html %}
+  <div class="section">
+    <h2>Mapa mental</h2>
+    <iframe src="/output/{{ title | urlencode }}/mindmap_tree.html" class="mindmap-frame" frameborder="0"></iframe>
+  </div>
+  {% endif %}
+
+  {% if files.infografia_html %}
+  <div class="section">
+    <h2>Infografia</h2>
+    <iframe src="/output/{{ title | urlencode }}/infografia.html" class="mindmap-frame" frameborder="0"></iframe>
+  </div>
+  {% endif %}
+
   {% if transcript %}
   <div class="section">
     <h2>Transcripcio</h2>
@@ -112,6 +126,24 @@
       {% endif %}
       {% if files.json %}
       <a href="/output/{{ title | urlencode }}/mindmap.json" class="btn btn-sm btn-outline" download>Sketchnote JSON</a>
+      {% endif %}
+      {% if files.mindmap_tree_html %}
+      <a href="/output/{{ title | urlencode }}/mindmap_tree.html" class="btn btn-sm btn-outline" download>Mapa mental HTML</a>
+      {% endif %}
+      {% if files.mindmap_tree_md %}
+      <a href="/output/{{ title | urlencode }}/mindmap_tree.md" class="btn btn-sm btn-outline" download>Mapa mental MD</a>
+      {% endif %}
+      {% if files.mindmap_tree_json %}
+      <a href="/output/{{ title | urlencode }}/mindmap_tree.json" class="btn btn-sm btn-outline" download>Mapa mental JSON</a>
+      {% endif %}
+      {% if files.infografia_html %}
+      <a href="/output/{{ title | urlencode }}/infografia.html" class="btn btn-sm btn-outline" download>Infografia HTML</a>
+      {% endif %}
+      {% if files.infografia_md %}
+      <a href="/output/{{ title | urlencode }}/infografia.md" class="btn btn-sm btn-outline" download>Infografia MD</a>
+      {% endif %}
+      {% if files.infografia_json %}
+      <a href="/output/{{ title | urlencode }}/infografia.json" class="btn btn-sm btn-outline" download>Infografia JSON</a>
       {% endif %}
     </div>
   </div>

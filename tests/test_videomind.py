@@ -368,7 +368,7 @@ class TestGenerateHtml:
 
 
 class TestCallClaude:
-    @patch("pipeline.mindmap.anthropic.Anthropic")
+    @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_parses_json_response(self, mock_anthropic_cls):
         from pipeline.mindmap import _call_claude
 
@@ -382,7 +382,7 @@ class TestCallClaude:
         assert result["title"] == "Neural Networks"
         assert len(result["sections"]) == 2
 
-    @patch("pipeline.mindmap.anthropic.Anthropic")
+    @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_handles_markdown_code_block_response(self, mock_anthropic_cls):
         from pipeline.mindmap import _call_claude
 
@@ -396,7 +396,7 @@ class TestCallClaude:
         result = _call_claude("some transcript")
         assert result["title"] == "Neural Networks"
 
-    @patch("pipeline.mindmap.anthropic.Anthropic")
+    @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_appends_language_instruction(self, mock_anthropic_cls):
         from pipeline.mindmap import _call_claude
 
@@ -413,7 +413,7 @@ class TestCallClaude:
         assert "Write ALL content" in content
         assert "in Spanish" in content
 
-    @patch("pipeline.mindmap.anthropic.Anthropic")
+    @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_no_language_instruction_when_empty(self, mock_anthropic_cls):
         from pipeline.mindmap import _call_claude
 
@@ -429,7 +429,7 @@ class TestCallClaude:
         content = call_args.kwargs["messages"][0]["content"]
         assert "Write ALL content" not in content
 
-    @patch("pipeline.mindmap.anthropic.Anthropic")
+    @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_no_language_instruction_when_unknown(self, mock_anthropic_cls):
         from pipeline.mindmap import _call_claude
 
@@ -445,7 +445,7 @@ class TestCallClaude:
         content = call_args.kwargs["messages"][0]["content"]
         assert "Write ALL content" not in content
 
-    @patch("pipeline.mindmap.anthropic.Anthropic")
+    @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_truncates_long_transcript(self, mock_anthropic_cls):
         from pipeline.mindmap import MAX_TRANSCRIPT_LENGTH, _call_claude
 
@@ -469,8 +469,17 @@ class TestCallClaude:
 
 
 class TestGenerateMindmap:
-    @patch("pipeline.mindmap._call_claude", return_value=SAMPLE_SKETCHNOTE_DATA)
-    def test_generates_all_formats(self, mock_claude, tmp_path):
+    def _mock_anthropic(self, mock_cls):
+        """Set up the Anthropic mock to return SAMPLE_SKETCHNOTE_DATA."""
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+        mock_cls.return_value = mock_client
+
+    @patch("pipeline.formats.base.anthropic.Anthropic")
+    def test_generates_all_formats(self, mock_cls, tmp_path):
+        self._mock_anthropic(mock_cls)
         from pipeline.mindmap import generate_mindmap
 
         result = generate_mindmap("test transcript", str(tmp_path), formats="all")
@@ -481,8 +490,9 @@ class TestGenerateMindmap:
         assert os.path.exists(result["md_path"])
         assert os.path.exists(result["html_path"])
 
-    @patch("pipeline.mindmap._call_claude", return_value=SAMPLE_SKETCHNOTE_DATA)
-    def test_generates_json_only(self, mock_claude, tmp_path):
+    @patch("pipeline.formats.base.anthropic.Anthropic")
+    def test_generates_json_only(self, mock_cls, tmp_path):
+        self._mock_anthropic(mock_cls)
         from pipeline.mindmap import generate_mindmap
 
         result = generate_mindmap("test transcript", str(tmp_path), formats="json")
@@ -493,8 +503,9 @@ class TestGenerateMindmap:
             data = json.load(f)
         assert data["title"] == "Neural Networks"
 
-    @patch("pipeline.mindmap._call_claude", return_value=SAMPLE_SKETCHNOTE_DATA)
-    def test_generates_md_only(self, mock_claude, tmp_path):
+    @patch("pipeline.formats.base.anthropic.Anthropic")
+    def test_generates_md_only(self, mock_cls, tmp_path):
+        self._mock_anthropic(mock_cls)
         from pipeline.mindmap import generate_mindmap
 
         result = generate_mindmap("test transcript", str(tmp_path), formats="md")
@@ -505,8 +516,9 @@ class TestGenerateMindmap:
             content = f.read()
         assert "# Neural Networks" in content
 
-    @patch("pipeline.mindmap._call_claude", return_value=SAMPLE_SKETCHNOTE_DATA)
-    def test_html_contains_svg(self, mock_claude, tmp_path):
+    @patch("pipeline.formats.base.anthropic.Anthropic")
+    def test_html_contains_svg(self, mock_cls, tmp_path):
+        self._mock_anthropic(mock_cls)
         from pipeline.mindmap import generate_mindmap
 
         result = generate_mindmap("test transcript", str(tmp_path), formats="html")
@@ -641,9 +653,9 @@ class TestParseArgs:
 
 
 class TestProcessVideo:
-    @patch("main.generate_mindmap")
+    @patch("main.generate_visual_format")
     @patch("main.transcribe_audio")
-    def test_skips_mindmap_for_short_transcript(self, mock_transcribe, mock_mindmap):
+    def test_skips_mindmap_for_short_transcript(self, mock_transcribe, mock_gen):
         from main import process_video
 
         mock_transcribe.return_value = {"text": "too short"}
@@ -656,15 +668,15 @@ class TestProcessVideo:
             output_format="all",
             open_browser=False,
         )
-        mock_mindmap.assert_not_called()
+        mock_gen.assert_not_called()
 
-    @patch("main.generate_mindmap")
+    @patch("main.generate_visual_format")
     @patch("main.transcribe_audio")
-    def test_calls_mindmap_for_normal_transcript(self, mock_transcribe, mock_mindmap):
+    def test_calls_mindmap_for_normal_transcript(self, mock_transcribe, mock_gen):
         from main import process_video
 
         mock_transcribe.return_value = {"text": "A" * 100, "language": "Spanish"}
-        mock_mindmap.return_value = {"html_path": None}
+        mock_gen.return_value = {"html_path": None}
 
         process_video(
             title="Test",
@@ -674,6 +686,6 @@ class TestProcessVideo:
             output_format="all",
             open_browser=False,
         )
-        mock_mindmap.assert_called_once()
-        _, kwargs = mock_mindmap.call_args
+        mock_gen.assert_called_once()
+        _, kwargs = mock_gen.call_args
         assert kwargs["language"] == "Spanish"

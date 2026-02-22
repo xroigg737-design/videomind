@@ -78,7 +78,7 @@ def _run_job(job_id):
         from pipeline.downloader import download_audio
         from pipeline.extractor import extract_audio_from_folder
         from pipeline.transcriber import transcribe_audio
-        from pipeline.mindmap import generate_mindmap
+        from pipeline.formats import generate_visual_format
 
         # Redirect prints from pipeline modules to SSE
         sys.stdout = _redirect_print(logger)
@@ -87,6 +87,7 @@ def _run_job(job_id):
         model = job["model"]
         language = job["lang"]
         output_format = job["format"]
+        visual_type = job.get("visual_type", "sketchnote")
 
         os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -129,21 +130,32 @@ def _run_job(job_id):
 
             logger.log(f"Transcripcio completada ({len(transcript)} caracters).")
 
-            # Step 3: Mind map
-            logger.step("mindmap", f"Generant sketchnote: {title}...")
+            # Step 3: Visual format
+            format_labels = {
+                "sketchnote": "sketchnote",
+                "mindmap": "mapa mental",
+                "infografia": "infografia",
+            }
+            format_label = format_labels.get(visual_type, visual_type)
+            logger.step("mindmap", f"Generant {format_label}: {title}...")
             if not validate_config():
                 logger.fail("ANTHROPIC_API_KEY no configurada. Revisa el fitxer .env.")
                 job["status"] = "failed"
                 return
             detected_language = result.get("language", "")
             try:
-                generate_mindmap(transcript, video_dir, formats=output_format, language=detected_language)
+                generate_visual_format(
+                    transcript, video_dir,
+                    format_type=visual_type,
+                    formats=output_format,
+                    language=detected_language,
+                )
             except Exception as e:
-                logger.fail(f"Error generant mapa: {e}")
+                logger.fail(f"Error generant {format_label}: {e}")
                 job["status"] = "failed"
                 return
 
-            logger.log("Mapa conceptual generat.")
+            logger.log(f"{format_label.capitalize()} generat.")
 
         job["status"] = "done"
         logger.done()
@@ -168,7 +180,13 @@ def _scan_library():
 
         # Check which files exist
         files = set(os.listdir(video_dir))
-        has_any_output = files & {"audio.mp3", "transcript.txt", "mindmap.html", "mindmap.md", "mindmap.json"}
+        known_outputs = {
+            "audio.mp3", "transcript.txt",
+            "mindmap.html", "mindmap.md", "mindmap.json",
+            "mindmap_tree.html", "mindmap_tree.md", "mindmap_tree.json",
+            "infografia.html", "infografia.md", "infografia.json",
+        }
+        has_any_output = files & known_outputs
         if not has_any_output:
             continue
 
@@ -188,6 +206,8 @@ def _scan_library():
             "has_html": "mindmap.html" in files,
             "has_md": "mindmap.md" in files,
             "has_json": "mindmap.json" in files,
+            "has_mindmap_tree": "mindmap_tree.html" in files,
+            "has_infografia": "infografia.html" in files,
         })
 
     # Sort by date, newest first
@@ -210,6 +230,7 @@ def process():
     model = request.form.get("model", DEFAULT_WHISPER_MODEL)
     lang = request.form.get("lang", "auto").strip() or "auto"
     fmt = request.form.get("format", "all")
+    visual_type = request.form.get("visual_type", "sketchnote")
 
     # Validate input
     if source_type == "url":
@@ -233,6 +254,7 @@ def process():
         "model": model,
         "lang": lang,
         "format": fmt,
+        "visual_type": visual_type,
         "events": Queue(),
         **source_val,
     }
@@ -294,6 +316,12 @@ def viewer(title):
         "html": "mindmap.html" in files_present,
         "md": "mindmap.md" in files_present,
         "json": "mindmap.json" in files_present,
+        "mindmap_tree_html": "mindmap_tree.html" in files_present,
+        "mindmap_tree_md": "mindmap_tree.md" in files_present,
+        "mindmap_tree_json": "mindmap_tree.json" in files_present,
+        "infografia_html": "infografia.html" in files_present,
+        "infografia_md": "infografia.md" in files_present,
+        "infografia_json": "infografia.json" in files_present,
     }
 
     # Load transcript text

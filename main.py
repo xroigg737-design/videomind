@@ -15,11 +15,11 @@ import webbrowser
 # Allow running from the project directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import DEFAULT_OUTPUT_DIR, DEFAULT_WHISPER_MODEL, validate_config
+from config import DEFAULT_OUTPUT_DIR, DEFAULT_VISUAL_TYPE, DEFAULT_WHISPER_MODEL, validate_config
 from pipeline.downloader import download_audio
 from pipeline.extractor import extract_audio_from_folder
 from pipeline.transcriber import transcribe_audio
-from pipeline.mindmap import generate_mindmap
+from pipeline.formats import generate_visual_format
 
 
 def parse_args() -> argparse.Namespace:
@@ -74,6 +74,13 @@ Examples:
         help="Mind map output format (default: all)",
     )
     parser.add_argument(
+        "--visual-type",
+        type=str,
+        choices=["sketchnote", "mindmap", "infografia"],
+        default=DEFAULT_VISUAL_TYPE,
+        help=f"Visual format type (default: {DEFAULT_VISUAL_TYPE})",
+    )
+    parser.add_argument(
         "--open",
         action="store_true",
         dest="open_browser",
@@ -90,8 +97,9 @@ def process_video(
     language: str,
     output_format: str,
     open_browser: bool,
+    visual_type: str = DEFAULT_VISUAL_TYPE,
 ):
-    """Run the transcription + mind map pipeline for one video."""
+    """Run the transcription + visual format pipeline for one video."""
     video_dir = os.path.dirname(audio_path)
 
     print(f"\n{'='*60}")
@@ -104,16 +112,21 @@ def process_video(
     transcript = result["text"]
 
     if not transcript or len(transcript.strip()) < 20:
-        print("  Warning: Transcript is very short or empty. Skipping mind map.")
+        print("  Warning: Transcript is very short or empty. Skipping visual format.")
         return
 
-    # Step 2: Generate mind map
-    print("\n[2/2] Generating concept map...")
+    # Step 2: Generate visual format
+    print(f"\n[2/2] Generating {visual_type}...")
     detected_language = result.get("language", "")
     try:
-        mm_result = generate_mindmap(transcript, video_dir, formats=output_format, language=detected_language)
+        mm_result = generate_visual_format(
+            transcript, video_dir,
+            format_type=visual_type,
+            formats=output_format,
+            language=detected_language,
+        )
     except Exception as e:
-        print(f"  Error generating mind map: {e}")
+        print(f"  Error generating {visual_type}: {e}")
         return
 
     # Open in browser if requested
@@ -183,6 +196,7 @@ def main():
             language=args.lang,
             output_format=args.format,
             open_browser=args.open_browser,
+            visual_type=args.visual_type,
         )
 
     print(f"\n{'='*60}")
