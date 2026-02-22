@@ -318,6 +318,55 @@ class TestCallClaude:
         assert result["title"] == "Neural Networks"
 
     @patch("pipeline.mindmap.anthropic.Anthropic")
+    def test_appends_language_instruction(self, mock_anthropic_cls):
+        from pipeline.mindmap import _call_claude
+
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+        mock_anthropic_cls.return_value = mock_client
+
+        _call_claude("some transcript", language="Spanish")
+
+        call_args = mock_client.messages.create.call_args
+        content = call_args.kwargs["messages"][0]["content"]
+        assert "Write ALL content" in content
+        assert "in Spanish" in content
+
+    @patch("pipeline.mindmap.anthropic.Anthropic")
+    def test_no_language_instruction_when_empty(self, mock_anthropic_cls):
+        from pipeline.mindmap import _call_claude
+
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+        mock_anthropic_cls.return_value = mock_client
+
+        _call_claude("some transcript", language="")
+
+        call_args = mock_client.messages.create.call_args
+        content = call_args.kwargs["messages"][0]["content"]
+        assert "Write ALL content" not in content
+
+    @patch("pipeline.mindmap.anthropic.Anthropic")
+    def test_no_language_instruction_when_unknown(self, mock_anthropic_cls):
+        from pipeline.mindmap import _call_claude
+
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+        mock_anthropic_cls.return_value = mock_client
+
+        _call_claude("some transcript", language="unknown")
+
+        call_args = mock_client.messages.create.call_args
+        content = call_args.kwargs["messages"][0]["content"]
+        assert "Write ALL content" not in content
+
+    @patch("pipeline.mindmap.anthropic.Anthropic")
     def test_truncates_long_transcript(self, mock_anthropic_cls):
         from pipeline.mindmap import MAX_TRANSCRIPT_LENGTH, _call_claude
 
@@ -535,7 +584,7 @@ class TestProcessVideo:
     def test_calls_mindmap_for_normal_transcript(self, mock_transcribe, mock_mindmap):
         from main import process_video
 
-        mock_transcribe.return_value = {"text": "A" * 100}
+        mock_transcribe.return_value = {"text": "A" * 100, "language": "Spanish"}
         mock_mindmap.return_value = {"html_path": None}
 
         process_video(
@@ -547,3 +596,5 @@ class TestProcessVideo:
             open_browser=False,
         )
         mock_mindmap.assert_called_once()
+        _, kwargs = mock_mindmap.call_args
+        assert kwargs["language"] == "Spanish"

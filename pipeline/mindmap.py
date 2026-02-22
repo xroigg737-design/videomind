@@ -56,13 +56,20 @@ TRANSCRIPT:
 {transcript}"""
 
 
-def _call_claude(transcript: str) -> dict:
+def _call_claude(transcript: str, language: str = "") -> dict:
     """Send transcript to Claude and parse the JSON response."""
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     # Truncate very long transcripts
     if len(transcript) > MAX_TRANSCRIPT_LENGTH:
         transcript = transcript[:MAX_TRANSCRIPT_LENGTH] + "\n\n[...transcript truncated...]"
+
+    prompt = EXTRACTION_PROMPT.format(transcript=transcript)
+    if language and language != "unknown":
+        prompt += (
+            f"\n\nIMPORTANT: Write ALL content "
+            f"(title, headings, points, connection labels) in {language}."
+        )
 
     message = client.messages.create(
         model=CLAUDE_MODEL,
@@ -71,7 +78,7 @@ def _call_claude(transcript: str) -> dict:
         messages=[
             {
                 "role": "user",
-                "content": EXTRACTION_PROMPT.format(transcript=transcript),
+                "content": prompt,
             }
         ],
     )
@@ -337,6 +344,7 @@ def generate_mindmap(
     transcript: str,
     output_dir: str,
     formats: str = "all",
+    language: str = "",
 ) -> dict:
     """Generate sketchnote files from a transcript.
 
@@ -344,6 +352,8 @@ def generate_mindmap(
         transcript: The full transcript text.
         output_dir: Directory to write output files to.
         formats: "all", "html", "md", or "json".
+        language: Detected transcript language (e.g. "Spanish"). Empty or
+                  "unknown" means no language instruction is added.
 
     Returns:
         {"json_path": str, "md_path": str, "html_path": str, "data": dict}
@@ -351,7 +361,7 @@ def generate_mindmap(
     os.makedirs(output_dir, exist_ok=True)
 
     print("  Analyzing transcript with Claude...")
-    data = _call_claude(transcript)
+    data = _call_claude(transcript, language=language)
 
     paths = {}
 

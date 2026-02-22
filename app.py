@@ -131,8 +131,9 @@ def _run_job(job_id):
                 logger.fail("ANTHROPIC_API_KEY no configurada. Revisa el fitxer .env.")
                 job["status"] = "failed"
                 return
+            detected_language = result.get("language", "")
             try:
-                generate_mindmap(transcript, video_dir, formats=output_format)
+                generate_mindmap(transcript, video_dir, formats=output_format, language=detected_language)
             except Exception as e:
                 logger.fail(f"Error generant mapa: {e}")
                 job["status"] = "failed"

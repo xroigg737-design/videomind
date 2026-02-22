@@ -109,8 +109,9 @@ def process_video(
 
     # Step 2: Generate mind map
     print("\n[2/2] Generating concept map...")
+    detected_language = result.get("language", "")
     try:
-        mm_result = generate_mindmap(transcript, video_dir, formats=output_format)
+        mm_result = generate_mindmap(transcript, video_dir, formats=output_format, language=detected_language)
     except Exception as e:
         print(f"  Error generating mind map: {e}")
         return
