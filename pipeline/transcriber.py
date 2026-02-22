@@ -5,6 +5,10 @@ Produces a full transcript text file and an SRT subtitle file.
 
 import os
 
+# Force CPU mode — CUDA can crash with bus errors on WSL2 even when
+# torch.cuda.is_available() reports True and basic ops succeed.
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 import whisper
 
 
@@ -61,8 +65,8 @@ def transcribe_audio(
             srt = f.read()
         return {"text": text, "srt": srt, "language": "unknown", "segments": []}
 
-    print(f"  Loading Whisper model: {model_name}")
-    model = whisper.load_model(model_name)
+    print(f"  Loading Whisper model: {model_name} (device: cpu)")
+    model = whisper.load_model(model_name, device="cpu")
 
     print("  Transcribing audio (this may take a while)...")
     transcribe_opts = {}
@@ -72,6 +76,7 @@ def transcribe_audio(
     result = model.transcribe(
         audio_path,
         verbose=False,
+        fp16=False,
         **transcribe_opts,
     )
 
