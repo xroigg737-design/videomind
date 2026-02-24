@@ -1,4 +1,10 @@
-"""Tests for the multi-format visual generation system (pipeline.formats)."""
+"""Tests for the multi-format visual generation system (pipeline.formats).
+
+Updated for the 3-layer architecture:
+  Layer 1 — Content Engine (unified JSON)
+  Layer 2 — Content Reducer
+  Layer 3 — Layout Engine (format-specific rendering)
+"""
 
 import json
 import os
@@ -11,107 +17,89 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 # ---------------------------------------------------------------------------
-# Sample data fixtures
+# Sample data fixtures — NEW unified JSON schema
 # ---------------------------------------------------------------------------
 
-SAMPLE_SKETCHNOTE_DATA = {
-    "title": "NEURAL NETS",
+SAMPLE_UNIFIED_DATA = {
+    "title": "Neural Networks",
+    "central_idea": "Deep learning transforms AI",
+    "content_type": "conceptual",
     "sections": [
         {
-            "id": "s1",
-            "heading": "ARCHITECTURE",
-            "icon": "\U0001f3d7\ufe0f",
-            "points": ["Organize neurons", "Deep networks"],
-            "color": "#4A90D9",
+            "label": "Architecture",
+            "bullets": ["Layer organization", "Deep networks"],
+            "example": "Convolutional layers for images",
         },
         {
-            "id": "s2",
-            "heading": "TRAINING",
-            "icon": "\U0001f3cb\ufe0f",
-            "points": ["Backpropagation", "Gradient descent"],
-            "color": "#E67E22",
+            "label": "Training",
+            "bullets": ["Backpropagation", "Gradient descent"],
+            "example": "Loss minimization loop",
         },
         {
-            "id": "s3",
-            "heading": "DATA FLOW",
-            "icon": "\U0001f4ca",
-            "points": ["Forward pass", "Loss computation"],
-            "color": "#2ECC71",
+            "label": "Data Flow",
+            "bullets": ["Forward pass", "Loss computation"],
+            "example": "Batch processing pipeline",
         },
         {
-            "id": "s4",
-            "heading": "DEPLOY",
-            "icon": "\U0001f680",
-            "points": ["Scale models", "Monitor drift"],
-            "color": "#9B59B6",
+            "label": "Deployment",
+            "bullets": ["Scale models", "Monitor drift"],
+            "example": "Cloud inference endpoints",
         },
     ],
-    "connections": [
-        {"from": "s1", "to": "s2", "label": "feeds"},
-    ],
+    "practice_plan": {
+        "daily_5min": ["Review metrics", "Read paper", "Code exercise"],
+        "weekly": ["Train model"],
+    },
+    "cta_removed": "",
 }
 
-SAMPLE_MINDMAP_DATA = {
+# Legacy fixtures kept for backward-compat validator tests
+SAMPLE_LEGACY_SKETCHNOTE = {
+    "title": "NEURAL NETS",
+    "sections": [
+        {"id": "s1", "heading": "ARCHITECTURE", "icon": "\U0001f3d7\ufe0f",
+         "points": ["Organize neurons", "Deep networks"], "color": "#4A90D9"},
+        {"id": "s2", "heading": "TRAINING", "icon": "\U0001f3cb\ufe0f",
+         "points": ["Backpropagation", "Gradient descent"], "color": "#E67E22"},
+        {"id": "s3", "heading": "DATA FLOW", "icon": "\U0001f4ca",
+         "points": ["Forward pass", "Loss computation"], "color": "#2ECC71"},
+        {"id": "s4", "heading": "DEPLOY", "icon": "\U0001f680",
+         "points": ["Scale models", "Monitor drift"], "color": "#9B59B6"},
+    ],
+    "connections": [{"from": "s1", "to": "s2", "label": "feeds"}],
+}
+
+SAMPLE_LEGACY_MINDMAP = {
     "type": "mindmap",
     "central_node": "Machine Learning",
     "branches": [
-        {
-            "title": "Supervised Learning",
-            "children": [
-                {"title": "Classification", "children": []},
-                {"title": "Regression", "children": []},
-            ],
-        },
-        {
-            "title": "Unsupervised Learning",
-            "children": [
-                {"title": "Clustering", "children": []},
-            ],
-        },
-        {
-            "title": "Reinforcement Learning",
-            "children": [
-                {"title": "Policy Gradient", "children": []},
-            ],
-        },
-        {
-            "title": "Feature Engineering",
-            "children": [],
-        },
-        {
-            "title": "Model Evaluation",
-            "children": [
-                {"title": "Cross Validation", "children": []},
-            ],
-        },
+        {"title": "Supervised Learning", "children": [
+            {"title": "Classification", "children": []},
+            {"title": "Regression", "children": []},
+        ]},
+        {"title": "Unsupervised Learning", "children": [
+            {"title": "Clustering", "children": []},
+        ]},
+        {"title": "Reinforcement Learning", "children": [
+            {"title": "Policy Gradient", "children": []},
+        ]},
+        {"title": "Feature Engineering", "children": []},
+        {"title": "Model Evaluation", "children": [
+            {"title": "Cross Validation", "children": []},
+        ]},
     ],
 }
 
-SAMPLE_INFOGRAFIA_DATA = {
+SAMPLE_LEGACY_INFOGRAFIA = {
     "type": "infografia",
     "headline": "AI Transforms Education",
     "sections": [
-        {
-            "title": "Problema",
-            "icon": "\u26a0\ufe0f",
-            "what": "No personalization",
-            "why": "Students fall behind",
-            "impact": "High dropout rates",
-        },
-        {
-            "title": "M\u00e8tode",
-            "icon": "\U0001f9ea",
-            "what": "Adaptive algorithms",
-            "why": "Real-time feedback",
-            "impact": "Tailored learning paths",
-        },
-        {
-            "title": "Resultat",
-            "icon": "\U0001f3af",
-            "what": "Better retention",
-            "why": "Engaged students",
-            "impact": "Higher completion rates",
-        },
+        {"title": "Problema", "icon": "\u26a0\ufe0f",
+         "what": "No personalization", "why": "Students fall behind", "impact": "High dropout rates"},
+        {"title": "M\u00e8tode", "icon": "\U0001f9ea",
+         "what": "Adaptive algorithms", "why": "Real-time feedback", "impact": "Tailored learning paths"},
+        {"title": "Resultat", "icon": "\U0001f3af",
+         "what": "Better retention", "why": "Engaged students", "impact": "Higher completion rates"},
     ],
     "closing_phrase": "Every learner unique",
 }
@@ -120,28 +108,166 @@ SAMPLE_CORE_STRUCTURE = {
     "thesis": "Neural network revolution",
     "content_type": "explanatory",
     "nuclear_ideas": [
-        {
-            "idea": "Architecture design",
-            "sub_ideas": ["Layer organization", "Depth abstraction"],
-            "structural_role": "concept",
-        },
-        {
-            "idea": "Training optimization",
-            "sub_ideas": ["Backpropagation gradients", "Loss-guided learning"],
-            "structural_role": "component",
-        },
-        {
-            "idea": "Cross-domain applications",
-            "sub_ideas": ["Vision language", "Healthcare robotics"],
-            "structural_role": "consequence",
-        },
+        {"idea": "Architecture design", "sub_ideas": ["Layer organization", "Depth abstraction"],
+         "structural_role": "concept"},
+        {"idea": "Training optimization", "sub_ideas": ["Backpropagation gradients", "Loss-guided learning"],
+         "structural_role": "component"},
+        {"idea": "Cross-domain applications", "sub_ideas": ["Vision language", "Healthcare robotics"],
+         "structural_role": "consequence"},
     ],
     "memorable_phrase": "Data fuels intelligence",
 }
 
 
 # ---------------------------------------------------------------------------
-# Validators
+# Content Engine (Layer 1)
+# ---------------------------------------------------------------------------
+
+
+class TestContentValidation:
+    def test_valid_unified_data(self):
+        from pipeline.formats.content_engine import validate_content
+
+        assert validate_content(SAMPLE_UNIFIED_DATA) == []
+
+    def test_too_many_sections(self):
+        from pipeline.formats.content_engine import validate_content
+
+        bad = dict(SAMPLE_UNIFIED_DATA)
+        bad["sections"] = SAMPLE_UNIFIED_DATA["sections"] * 2  # 8 sections
+        violations = validate_content(bad)
+        assert any("sections" in v for v in violations)
+
+    def test_title_too_long(self):
+        from pipeline.formats.content_engine import validate_content
+
+        bad = dict(SAMPLE_UNIFIED_DATA)
+        bad["title"] = "This is a very very very very long title"
+        violations = validate_content(bad)
+        assert any("title" in v for v in violations)
+
+    def test_bullet_too_long(self):
+        from pipeline.formats.content_engine import validate_content
+
+        bad = dict(SAMPLE_UNIFIED_DATA)
+        bad["sections"] = [{
+            "label": "Test",
+            "bullets": ["This bullet is way too long for sure"],
+            "example": "",
+        }]
+        violations = validate_content(bad)
+        assert any("bullet" in v for v in violations)
+
+    def test_invalid_content_type(self):
+        from pipeline.formats.content_engine import validate_content
+
+        bad = dict(SAMPLE_UNIFIED_DATA)
+        bad["content_type"] = "narrative"  # old type, not in new schema
+        violations = validate_content(bad)
+        assert any("content_type" in v for v in violations)
+
+
+# ---------------------------------------------------------------------------
+# Content Reducer (Layer 2)
+# ---------------------------------------------------------------------------
+
+
+class TestContentReducer:
+    def test_reduce_phrase_within_limit(self):
+        from pipeline.formats.content_reducer import reduce_phrase
+
+        assert reduce_phrase("Short phrase", 4) == "Short phrase"
+
+    def test_reduce_phrase_strips_filler(self):
+        from pipeline.formats.content_reducer import reduce_phrase
+
+        result = reduce_phrase("The very important daily task", 4)
+        assert len(result.split()) <= 4
+
+    def test_reduce_content_enforces_limits(self):
+        from pipeline.formats.content_reducer import reduce_content, count_visible_words
+
+        reduced = reduce_content(SAMPLE_UNIFIED_DATA)
+        # All labels should be <= 4 words
+        for sec in reduced["sections"]:
+            assert len(sec["label"].split()) <= 4
+        # All bullets should be <= 4 words
+        for sec in reduced["sections"]:
+            for b in sec["bullets"]:
+                assert len(b.split()) <= 4
+        # Max 4 sections
+        assert len(reduced["sections"]) <= 4
+
+    def test_count_visible_words(self):
+        from pipeline.formats.content_reducer import count_visible_words
+
+        data = {
+            "title": "Two Words",
+            "sections": [
+                {"label": "One", "bullets": ["Two words"], "example": "Three words here"},
+            ],
+        }
+        assert count_visible_words(data) == 8  # 2 + 1 + 2 + 3
+
+    def test_force_reduce_removes_examples_first(self):
+        from pipeline.formats.content_reducer import force_reduce_to_word_limit, count_visible_words
+
+        result = force_reduce_to_word_limit(SAMPLE_UNIFIED_DATA, 40)
+        assert count_visible_words(result) <= 40
+
+
+# ---------------------------------------------------------------------------
+# Quality Check
+# ---------------------------------------------------------------------------
+
+
+class TestQualityCheck:
+    def test_passes_clean_data(self):
+        from pipeline.formats.quality_check import check_quality
+
+        clean = {
+            "title": "Short Title",
+            "sections": [
+                {"label": "One", "bullets": ["Word one", "Word two"], "example": ""},
+                {"label": "Two", "bullets": ["Word three"], "example": ""},
+            ],
+        }
+        assert check_quality(clean) == []
+
+    def test_fails_too_many_words(self):
+        from pipeline.formats.quality_check import check_quality
+
+        # Create verbose data that exceeds 40 words
+        verbose = {
+            "title": "Comprehensive Neural Network Guide",
+            "sections": [
+                {"label": "Architecture Design", "bullets": [
+                    "Layer organization methods", "Deep network patterns", "Activation function types",
+                ], "example": "Convolutional layers process images effectively"},
+                {"label": "Training Optimization", "bullets": [
+                    "Backpropagation gradient descent", "Loss function minimization", "Learning rate tuning",
+                ], "example": "Stochastic gradient descent works well"},
+                {"label": "Data Flow Process", "bullets": [
+                    "Forward pass computation", "Loss function evaluation", "Batch processing pipeline",
+                ], "example": "Mini batch gradient processing approach"},
+                {"label": "Deployment Strategy", "bullets": [
+                    "Scale production models", "Monitor model drift", "Continuous model retraining",
+                ], "example": "Cloud inference endpoint deployment strategy"},
+            ],
+        }
+        issues = check_quality(verbose)
+        assert any("visible words" in i for i in issues)
+
+    def test_ensure_quality_auto_reduces(self):
+        from pipeline.formats.quality_check import ensure_quality
+        from pipeline.formats.content_reducer import count_visible_words
+
+        result = ensure_quality(SAMPLE_UNIFIED_DATA)
+        assert count_visible_words(result) <= 40
+
+
+# ---------------------------------------------------------------------------
+# Validators (supports both unified and legacy schemas)
 # ---------------------------------------------------------------------------
 
 
@@ -206,17 +332,9 @@ class TestCheckMaxDepth:
 
         deep = {
             "title": "a",
-            "children": [
-                {
-                    "title": "b",
-                    "children": [
-                        {
-                            "title": "c",
-                            "children": [{"title": "d", "children": []}],
-                        }
-                    ],
-                }
-            ],
+            "children": [{"title": "b", "children": [
+                {"title": "c", "children": [{"title": "d", "children": []}]}
+            ]}],
         }
         w = check_max_depth(deep, 3)
         assert w is not None
@@ -224,23 +342,25 @@ class TestCheckMaxDepth:
 
 
 class TestCollectAllViolations:
-    def test_mindmap_valid(self):
+    def test_unified_valid(self):
         from pipeline.formats.validators import collect_all_violations
 
-        data = {
-            "central_node": "ML Topic",
-            "branches": [
-                {"title": "Branch one", "children": [
-                    {"title": "Child A", "children": []},
-                    {"title": "Child B", "children": []},
-                ]},
-                {"title": "Branch two", "children": []},
-                {"title": "Branch three", "children": []},
-            ],
-        }
-        assert collect_all_violations(data, "mindmap") == []
+        assert collect_all_violations(SAMPLE_UNIFIED_DATA, "infografia") == []
 
-    def test_mindmap_too_many_branches(self):
+    def test_unified_too_many_sections(self):
+        from pipeline.formats.validators import collect_all_violations
+
+        bad = dict(SAMPLE_UNIFIED_DATA)
+        bad["sections"] = SAMPLE_UNIFIED_DATA["sections"] * 2
+        violations = collect_all_violations(bad, "infografia")
+        assert any("sections" in v for v in violations)
+
+    def test_legacy_mindmap_valid(self):
+        from pipeline.formats.validators import collect_all_violations
+
+        assert collect_all_violations(SAMPLE_LEGACY_MINDMAP, "mindmap") == []
+
+    def test_legacy_mindmap_too_many_branches(self):
         from pipeline.formats.validators import collect_all_violations
 
         data = {
@@ -250,15 +370,41 @@ class TestCollectAllViolations:
         violations = collect_all_violations(data, "mindmap")
         assert any("branches" in v for v in violations)
 
-    def test_infografia_valid(self):
+    def test_legacy_infografia_valid(self):
         from pipeline.formats.validators import collect_all_violations
 
-        # headline "AI Transforms Education" is 3 words, within 4-word limit
-        assert collect_all_violations(SAMPLE_INFOGRAFIA_DATA, "infografia") == []
+        assert collect_all_violations(SAMPLE_LEGACY_INFOGRAFIA, "infografia") == []
 
 
 # ---------------------------------------------------------------------------
-# Distiller (Phase 1 & 2)
+# Heuristic format detection
+# ---------------------------------------------------------------------------
+
+
+class TestHeuristicDetection:
+    def test_procedural_to_infografia(self):
+        from pipeline.formats import detect_best_format
+
+        assert detect_best_format("procedural") == "infografia"
+
+    def test_conceptual_to_mindmap(self):
+        from pipeline.formats import detect_best_format
+
+        assert detect_best_format("conceptual") == "mindmap"
+
+    def test_pedagogical_to_sketchnote(self):
+        from pipeline.formats import detect_best_format
+
+        assert detect_best_format("pedagogical") == "sketchnote"
+
+    def test_unknown_defaults_to_sketchnote(self):
+        from pipeline.formats import detect_best_format
+
+        assert detect_best_format("unknown") == "sketchnote"
+
+
+# ---------------------------------------------------------------------------
+# Distiller (Phase 1 & 2 — kept for backward compat)
 # ---------------------------------------------------------------------------
 
 
@@ -310,7 +456,6 @@ class TestBuildStructuralModel:
             "memorable_phrase": "",
         }
         model = build_structural_model(core)
-        # "A" had unknown role, should go to emptiest slot (method or result)
         all_ideas = []
         for slot_ideas in model["structure"].values():
             all_ideas.extend(slot_ideas)
@@ -365,7 +510,7 @@ class TestDispatcher:
 
 
 # ---------------------------------------------------------------------------
-# Sketchnote format
+# Sketchnote format (unified JSON)
 # ---------------------------------------------------------------------------
 
 
@@ -374,23 +519,31 @@ class TestSketchnoteMarkdown:
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
-        md = fmt.generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert md.startswith("# NEURAL NETS\n")
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert md.startswith("# Neural Networks\n")
 
-    def test_contains_section_headings(self):
+    def test_contains_section_labels(self):
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
-        md = fmt.generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "ARCHITECTURE" in md
-        assert "TRAINING" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "Architecture" in md
+        assert "Training" in md
 
     def test_contains_bullets(self):
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
-        md = fmt.generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "- Organize neurons" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "- Layer organization" in md
+
+    def test_contains_practice_plan(self):
+        from pipeline.formats.sketchnote import SketchnoteFormat
+
+        fmt = SketchnoteFormat()
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "Practice Plan" in md
+        assert "Review metrics" in md
 
 
 class TestSketchnoteHtml:
@@ -398,7 +551,7 @@ class TestSketchnoteHtml:
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
-        html = fmt.generate_html(SAMPLE_SKETCHNOTE_DATA)
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
         assert "<svg" in html
         assert "</svg>" in html
 
@@ -406,82 +559,64 @@ class TestSketchnoteHtml:
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
-        html = fmt.generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "NEURAL NETS" in html
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        assert "Neural Networks" in html
 
     def test_contains_sketchy_filter(self):
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
-        html = fmt.generate_html(SAMPLE_SKETCHNOTE_DATA)
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
         assert "feTurbulence" in html
 
-    def test_contains_connection(self):
+    def test_contains_design_tokens(self):
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
-        html = fmt.generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "feeds" in html
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        assert "#2D5BFF" in html  # Primary color
+        assert "Caveat" in html  # Sketch font
 
-
-class TestSketchnoteValidation:
-    def test_valid_data_no_warnings(self):
+    def test_four_quadrants(self):
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
-        data = {
-            "title": "Test",
-            "sections": [
-                {"id": f"s{i}", "heading": "Head", "icon": "x", "points": ["Short point"], "color": "#000"}
-                for i in range(5)
-            ],
-            "connections": [],
-        }
-        assert fmt.validate(data) == []
-
-    def test_warns_too_few_sections(self):
-        from pipeline.formats.sketchnote import SketchnoteFormat
-
-        fmt = SketchnoteFormat()
-        data = {
-            "title": "Test",
-            "sections": [
-                {"id": "s1", "heading": "H", "icon": "x", "points": ["P"], "color": "#000"}
-            ],
-            "connections": [],
-        }
-        warnings = fmt.validate(data)
-        assert any("sections" in w for w in warnings)
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        # Should contain all 4 section labels
+        assert "Architecture" in html
+        assert "Training" in html
+        assert "Data Flow" in html
+        assert "Deployment" in html
 
 
 # ---------------------------------------------------------------------------
-# Mindmap format
+# Mindmap format (unified JSON)
 # ---------------------------------------------------------------------------
 
 
 class TestMindmapMarkdown:
-    def test_contains_central_node(self):
+    def test_contains_title(self):
         from pipeline.formats.mindmap_format import MindmapFormat
 
         fmt = MindmapFormat()
-        md = fmt.generate_markdown(SAMPLE_MINDMAP_DATA)
-        assert "# Machine Learning" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "# Neural Networks" in md
 
-    def test_contains_branches(self):
+    def test_contains_sections_as_branches(self):
         from pipeline.formats.mindmap_format import MindmapFormat
 
         fmt = MindmapFormat()
-        md = fmt.generate_markdown(SAMPLE_MINDMAP_DATA)
-        assert "## Supervised Learning" in md
-        assert "## Unsupervised Learning" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "## Architecture" in md
+        assert "## Training" in md
 
-    def test_contains_children(self):
+    def test_contains_bullets(self):
         from pipeline.formats.mindmap_format import MindmapFormat
 
         fmt = MindmapFormat()
-        md = fmt.generate_markdown(SAMPLE_MINDMAP_DATA)
-        assert "- Classification" in md
-        assert "- Regression" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "- Layer organization" in md
+        assert "- Backpropagation" in md
 
 
 class TestMindmapHtml:
@@ -489,117 +624,71 @@ class TestMindmapHtml:
         from pipeline.formats.mindmap_format import MindmapFormat
 
         fmt = MindmapFormat()
-        html = fmt.generate_html(SAMPLE_MINDMAP_DATA)
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
         assert "<svg" in html
         assert "</svg>" in html
 
-    def test_contains_central_node(self):
+    def test_contains_title_in_central_node(self):
         from pipeline.formats.mindmap_format import MindmapFormat
 
         fmt = MindmapFormat()
-        html = fmt.generate_html(SAMPLE_MINDMAP_DATA)
-        assert "Machine Learning" in html
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        assert "Neural Networks" in html
 
-    def test_contains_branches(self):
+    def test_contains_branch_labels(self):
         from pipeline.formats.mindmap_format import MindmapFormat
 
         fmt = MindmapFormat()
-        html = fmt.generate_html(SAMPLE_MINDMAP_DATA)
-        assert "Supervised Learning" in html
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        assert "Architecture" in html
 
-    def test_contains_executive_style(self):
+    def test_contains_design_tokens(self):
         from pipeline.formats.mindmap_format import MindmapFormat
 
         fmt = MindmapFormat()
-        html = fmt.generate_html(SAMPLE_MINDMAP_DATA)
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
         assert "Inter" in html
         assert "#FFFFFF" in html
-
-
-class TestMindmapValidation:
-    def test_valid_data_no_warnings(self):
-        from pipeline.formats.mindmap_format import MindmapFormat
-
-        fmt = MindmapFormat()
-        assert fmt.validate(SAMPLE_MINDMAP_DATA) == []
-
-    def test_warns_too_few_branches(self):
-        from pipeline.formats.mindmap_format import MindmapFormat
-
-        fmt = MindmapFormat()
-        data = {
-            "central_node": "Test",
-            "branches": [{"title": "Only one", "children": []}],
-        }
-        warnings = fmt.validate(data)
-        assert any("branches" in w for w in warnings)
-
-    def test_warns_deep_tree(self):
-        from pipeline.formats.mindmap_format import MindmapFormat
-
-        fmt = MindmapFormat()
-        data = {
-            "central_node": "Test",
-            "branches": [
-                {
-                    "title": "L1",
-                    "children": [
-                        {
-                            "title": "L2",
-                            "children": [
-                                {
-                                    "title": "L3",
-                                    "children": [{"title": "L4", "children": []}],
-                                }
-                            ],
-                        }
-                    ],
-                },
-                {"title": "B2", "children": []},
-                {"title": "B3", "children": []},
-            ],
-        }
-        warnings = fmt.validate(data)
-        assert any("depth" in w.lower() for w in warnings)
+        assert "#2D5BFF" in html  # Primary color
 
 
 # ---------------------------------------------------------------------------
-# Infografia format
+# Infografia format (unified JSON)
 # ---------------------------------------------------------------------------
 
 
 class TestInfografiaMarkdown:
-    def test_contains_headline(self):
+    def test_contains_title(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        md = fmt.generate_markdown(SAMPLE_INFOGRAFIA_DATA)
-        assert "# AI Transforms Education" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "# Neural Networks" in md
 
     def test_contains_sections(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        md = fmt.generate_markdown(SAMPLE_INFOGRAFIA_DATA)
-        assert "Problema" in md
-        assert "M\u00e8tode" in md
-        assert "Resultat" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "Architecture" in md
+        assert "Training" in md
 
-    def test_contains_closing_phrase(self):
+    def test_contains_bullets(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        md = fmt.generate_markdown(SAMPLE_INFOGRAFIA_DATA)
-        assert "Every learner unique" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "- Layer organization" in md
 
-    def test_contains_what_why_impact(self):
+    def test_no_what_why_impact(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        md = fmt.generate_markdown(SAMPLE_INFOGRAFIA_DATA)
-        assert "No personalization" in md
-        assert "Students fall behind" in md
-        assert "High dropout rates" in md
+        md = fmt.generate_markdown(SAMPLE_UNIFIED_DATA)
+        # The old WHAT/WHY/IMPACT pattern should be gone
+        assert "**What:**" not in md
+        assert "**Why:**" not in md
+        assert "**Impact:**" not in md
 
 
 class TestInfografiaHtml:
@@ -607,95 +696,44 @@ class TestInfografiaHtml:
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
         assert "<svg" in html
         assert "</svg>" in html
 
-    def test_contains_headline(self):
+    def test_contains_title(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
-        assert "AI Transforms Education" in html
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        assert "Neural Networks" in html
 
-    def test_contains_section_colors(self):
+    def test_contains_design_tokens(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
-        assert "#2D5BFF" in html  # First section
-        assert "#00B894" in html  # Second section
-        assert "#FDCB6E" in html  # Third section
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        assert "#2D5BFF" in html  # Primary
+        assert "Inter" in html  # Font
+        assert "#FFFFFF" in html  # Background
 
-    def test_contains_closing_phrase(self):
+    def test_no_what_why_impact_labels(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
-        assert "Every learner unique" in html
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        # The old WHAT/WHY/IMPACT pattern should be gone
+        assert "WHAT" not in html
+        assert "WHY" not in html
+        assert "IMPACT" not in html
 
-    def test_contains_executive_style(self):
+    def test_contains_section_numbers(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
-        html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
-        assert "Inter" in html
-        assert "#FFFFFF" in html
-
-
-class TestInfografiaValidation:
-    def test_valid_data_no_warnings(self):
-        from pipeline.formats.infografia import InfografiaFormat
-
-        fmt = InfografiaFormat()
-        assert fmt.validate(SAMPLE_INFOGRAFIA_DATA) == []
-
-    def test_warns_wrong_section_count(self):
-        from pipeline.formats.infografia import InfografiaFormat
-
-        fmt = InfografiaFormat()
-        data = {
-            "headline": "Test",
-            "sections": [
-                {"title": "A", "icon": "x", "what": "a", "why": "b", "impact": "c"},
-                {"title": "B", "icon": "x", "what": "a", "why": "b", "impact": "c"},
-            ],
-            "closing_phrase": "Short",
-        }
-        warnings = fmt.validate(data)
-        assert any("sections" in w for w in warnings)
-
-    def test_warns_long_section_title(self):
-        from pipeline.formats.infografia import InfografiaFormat
-
-        fmt = InfografiaFormat()
-        data = {
-            "headline": "Test",
-            "sections": [
-                {"title": "This is way too long", "icon": "x", "what": "a", "why": "b", "impact": "c"},
-                {"title": "Short", "icon": "x", "what": "a", "why": "b", "impact": "c"},
-                {"title": "Ok", "icon": "x", "what": "a", "why": "b", "impact": "c"},
-            ],
-            "closing_phrase": "Short",
-        }
-        warnings = fmt.validate(data)
-        assert any("title" in w.lower() for w in warnings)
-
-    def test_warns_long_headline(self):
-        from pipeline.formats.infografia import InfografiaFormat
-
-        fmt = InfografiaFormat()
-        data = {
-            "headline": "This is a very long headline exceeds limit",
-            "sections": [
-                {"title": "A", "icon": "x", "what": "a", "why": "b", "impact": "c"},
-                {"title": "B", "icon": "x", "what": "a", "why": "b", "impact": "c"},
-                {"title": "C", "icon": "x", "what": "a", "why": "b", "impact": "c"},
-            ],
-            "closing_phrase": "Short",
-        }
-        warnings = fmt.validate(data)
-        assert any("headline" in w for w in warnings)
+        html = fmt.generate_html(SAMPLE_UNIFIED_DATA)
+        # Should have numbered sections (1, 2, 3, 4)
+        assert ">1<" in html
+        assert ">2<" in html
 
 
 # ---------------------------------------------------------------------------
@@ -723,49 +761,17 @@ class TestBackwardCompat:
         from pipeline.mindmap import SYSTEM_PROMPT
 
         assert isinstance(SYSTEM_PROMPT, str)
-        assert len(SYSTEM_PROMPT) > 10
 
-    @patch("pipeline.formats.base.anthropic.Anthropic")
-    def test_call_claude_works(self, mock_cls):
-        from pipeline.mindmap import _call_claude
-
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
-        mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
-        mock_cls.return_value = mock_client
-
-        result = _call_claude("some transcript")
-        assert result["title"] == "NEURAL NETS"
-
-    @patch("pipeline.formats.base.anthropic.Anthropic")
-    @patch("pipeline.formats.distiller.anthropic.Anthropic")
-    def test_output_files_named_mindmap(self, mock_distiller_cls, mock_base_cls, tmp_path):
+    @patch("pipeline.formats.content_engine.anthropic.Anthropic")
+    def test_output_files_named_mindmap(self, mock_engine_cls, tmp_path):
         from pipeline.mindmap import generate_mindmap
 
-        # Phase 1: distiller returns core structure (new 1-4 word format)
-        core_for_test = {
-            "thesis": "Neural revolution",
-            "content_type": "explanatory",
-            "nuclear_ideas": [
-                {"idea": "Architecture design", "sub_ideas": ["Layer org", "Depth"], "structural_role": "concept"},
-                {"idea": "Training optimization", "sub_ideas": ["Backprop", "Loss guide"], "structural_role": "component"},
-                {"idea": "Cross-domain use", "sub_ideas": ["Vision", "Healthcare"], "structural_role": "consequence"},
-            ],
-            "memorable_phrase": "Data fuels AI",
-        }
-        distiller_response = MagicMock()
-        distiller_response.content = [MagicMock(text=json.dumps(core_for_test))]
-        mock_distiller_client = MagicMock()
-        mock_distiller_client.messages.create.return_value = distiller_response
-        mock_distiller_cls.return_value = mock_distiller_client
-
-        # Phase 3: transform returns sketchnote data
-        transform_response = MagicMock()
-        transform_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
-        mock_base_client = MagicMock()
-        mock_base_client.messages.create.return_value = transform_response
-        mock_base_cls.return_value = mock_base_client
+        # Mock the content engine LLM call to return unified JSON
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_UNIFIED_DATA))]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+        mock_engine_cls.return_value = mock_client
 
         result = generate_mindmap("test transcript", str(tmp_path), formats="all")
         assert result["json_path"].endswith("mindmap.json")
@@ -796,3 +802,23 @@ class TestExtractJson:
 
         data = _extract_json_from_response('```\n{"key": "value"}\n```')
         assert data == {"key": "value"}
+
+
+class TestLightenColor:
+    def test_lightens_toward_white(self):
+        from pipeline.formats.base import lighten_color
+
+        result = lighten_color("#000000", 0.5)
+        assert result == "#7f7f7f"
+
+    def test_full_lighten_is_white(self):
+        from pipeline.formats.base import lighten_color
+
+        result = lighten_color("#000000", 1.0)
+        assert result == "#ffffff"
+
+    def test_zero_lighten_unchanged(self):
+        from pipeline.formats.base import lighten_color
+
+        result = lighten_color("#2D5BFF", 0.0)
+        assert result == "#2d5bff"

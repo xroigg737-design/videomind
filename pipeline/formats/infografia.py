@@ -1,265 +1,210 @@
-"""Infografia visual format — Executive Strategic Infographic.
+"""Infographic visual format — Clean vertical blocks.
 
-BCG/McKinsey consulting aesthetic: vertical 4:5 layout, 3-5 sections,
-each answering What/Why/Impact, clean sans-serif typography,
-soft muted colors, lots of white space.
+Layout: Big title top → max 4 vertical blocks → generous whitespace.
+Each block: label + bullets + example.
+Max 40 visible words total.
+No WHAT/WHY/IMPACT pattern. Clean, didactic, professional.
 
-Phase 3 transform: receives a structural model and produces an infografia JSON.
+Uses unified content JSON from Layer 1 (Content Engine).
 """
 
 from xml.sax.saxutils import escape as xml_escape
 
-from pipeline.formats.base import VisualFormat, INFOGRAFIA_COLORS, html_page_executive
-from pipeline.formats.validators import (
-    check_list_length,
-    check_word_count,
+from pipeline.formats.base import (
+    VisualFormat,
+    DESIGN_TOKENS,
+    SECTION_COLORS,
+    html_page_clean,
+    lighten_color,
 )
-
-TRANSFORM_SYSTEM = """\
-You are a senior Visual Thinking Designer at a top consulting firm (McKinsey/BCG). \
-You create executive infographics that are clean, professional, and impactful. \
-Every word must earn its place. You think in strategic frameworks, not paragraphs. \
-Short, crisp, scannable. You produce clean JSON."""
-
-TRANSFORM_PROMPT = """\
-Transform this structural model into an executive strategic infographic.
-
-STRUCTURAL MODEL:
-{structural_model}
-
-DESIGN PHILOSOPHY:
-- Think like a McKinsey consultant presenting to a C-suite.
-- Professional, clean, solid. No decoration, no fluff.
-- Each section answers: What? Why it matters? Impact?
-- Maximum clarity with minimum words.
-
-STRICT RULES:
-- Headline: MAXIMUM 4 words. Executive-level, not academic.
-- 3 to 5 sections (one per nuclear idea). NEVER more than 5.
-- Each section has:
-  - title: 1-3 words. The concept name.
-  - icon: one clean emoji (professional: 📊 🎯 ⚡ 🔑 🏗️ 📈 🔍 💎 🛡️ ⚖️)
-  - what: What is this? MAXIMUM 4 words.
-  - why: Why does it matter? MAXIMUM 4 words.
-  - impact: What's the impact? MAXIMUM 4 words.
-- Closing phrase: MAXIMUM 6 words. Memorable executive takeaway.
-- Use noun phrases and active fragments, not full sentences.
-- No filler words. Every word must punch.
-
-Return ONLY valid JSON:
-{{
-  "type": "infografia",
-  "headline": "Executive Title (1-4 words)",
-  "sections": [
-    {{
-      "title": "Concept (1-3 words)",
-      "icon": "emoji",
-      "what": "Definition (1-4 words)",
-      "why": "Importance (1-4 words)",
-      "impact": "Result (1-4 words)"
-    }}
-  ],
-  "closing_phrase": "Takeaway (max 6 words)"
-}}"""
-
-# Legacy prompts kept for backward compatibility
-SYSTEM_PROMPT = TRANSFORM_SYSTEM
-EXTRACTION_PROMPT = """\
-Turn this transcript into an executive infographic.
-Headline (max 4 words), 3-5 sections with title/what/why/impact (max 4 words each),
-closing phrase (max 6 words). Return ONLY valid JSON.
-
-TRANSCRIPT:
-{transcript}"""
 
 
 class InfografiaFormat(VisualFormat):
     FORMAT_TYPE = "infografia"
-    TRANSFORM_SYSTEM = TRANSFORM_SYSTEM
-    TRANSFORM_PROMPT = TRANSFORM_PROMPT
-    SYSTEM_PROMPT = SYSTEM_PROMPT
-    EXTRACTION_PROMPT = EXTRACTION_PROMPT
     FILE_PREFIX = "infografia"
-
-    # -- validation ----------------------------------------------------------
-
-    def validate(self, data: dict) -> list:
-        warnings = []
-
-        sections = data.get("sections", [])
-        w = check_list_length(sections, 3, 5, "sections")
-        if w:
-            warnings.append(w)
-
-        w = check_word_count(data.get("headline", ""), 4, "headline")
-        if w:
-            warnings.append(w)
-
-        w = check_word_count(data.get("closing_phrase", ""), 6, "closing_phrase")
-        if w:
-            warnings.append(w)
-
-        for sec in sections:
-            w = check_word_count(sec.get("title", ""), 3, f"title '{sec.get('title', '?')}'")
-            if w:
-                warnings.append(w)
-            for field in ("what", "why", "impact"):
-                val = sec.get(field, "")
-                if val:
-                    w = check_word_count(val, 4, f"{field} in '{sec.get('title', '?')}'")
-                    if w:
-                        warnings.append(w)
-
-        return warnings
 
     # -- markdown ------------------------------------------------------------
 
     def generate_markdown(self, data: dict) -> str:
-        lines = [f"# {data.get('headline', 'Infografia')}\n"]
+        lines = [f"# {data.get('title', 'Infografia')}\n"]
+        central = data.get("central_idea", "")
+        if central:
+            lines.append(f"*{central}*\n")
 
-        for section in data.get("sections", []):
-            icon = section.get("icon", "")
-            title = section.get("title", "")
-            lines.append(f"## {icon} {title}\n")
-            what = section.get("what", "")
-            why = section.get("why", "")
-            impact = section.get("impact", "")
-            if what:
-                lines.append(f"- **What:** {what}")
-            if why:
-                lines.append(f"- **Why:** {why}")
-            if impact:
-                lines.append(f"- **Impact:** {impact}")
+        for sec in data.get("sections", []):
+            label = sec.get("label", "")
+            lines.append(f"## {label}\n")
+            for b in sec.get("bullets", []):
+                lines.append(f"- {b}")
+            example = sec.get("example", "")
+            if example:
+                lines.append(f"\n> {example}")
             lines.append("")
 
-        lines.append("---\n")
-        closing = data.get("closing_phrase", "")
-        if closing:
-            lines.append(f"> *{closing}*\n")
+        plan = data.get("practice_plan", {})
+        daily = plan.get("daily_5min", [])
+        weekly = plan.get("weekly", [])
+        if daily or weekly:
+            lines.append("---\n")
+            lines.append("**Practice Plan**\n")
+            for d in daily:
+                lines.append(f"- {d}")
+            for w in weekly:
+                lines.append(f"- Weekly: {w}")
+            lines.append("")
 
         return "\n".join(lines) + "\n"
 
-    # -- HTML / SVG (executive vertical layout) ------------------------------
+    # -- HTML / SVG (clean vertical blocks) ----------------------------------
 
     def generate_html(self, data: dict) -> str:
-        headline = xml_escape(data.get("headline", "Infografia"))
-        sections = data.get("sections", [])
-        closing = xml_escape(data.get("closing_phrase", ""))
+        title = xml_escape(data.get("title", "Infografia"))
+        sections = data.get("sections", [])[:4]
 
-        canvas_w, canvas_h = 800, 1000  # 4:5 aspect
-        margin_x = 80
+        canvas_w = 800
+        margin_x = 60
         content_w = canvas_w - 2 * margin_x
+        spacing = DESIGN_TOKENS["spacing"]
+        spacing_lg = DESIGN_TOKENS["spacing_lg"]
+        radius = DESIGN_TOKENS["border_radius"]
+        primary = DESIGN_TOKENS["primary"]
+        accent = DESIGN_TOKENS["accent"]
+        accent_light = DESIGN_TOKENS["accent_light"]
 
         parts = []
 
-        # Pure white background
-        parts.append(f'<rect width="{canvas_w}" height="{canvas_h}" fill="#FFFFFF"/>')
+        # White background
+        parts.append(f'<rect width="{canvas_w}" height="2000" fill="{DESIGN_TOKENS["background"]}"/>')
 
-        # Headline — large, bold, dark
+        # Big title — top, centered, bold
+        y = 70
         parts.append(
-            f'<text x="{canvas_w // 2}" y="90" '
-            f'font-family="\'Inter\', -apple-system, sans-serif" '
-            f'font-size="36" font-weight="700" fill="#1A1A2E" '
-            f'text-anchor="middle" letter-spacing="-0.5">{headline}</text>'
+            f'<text x="{canvas_w // 2}" y="{y}" '
+            f'font-family="{DESIGN_TOKENS["font_heading"]}" '
+            f'font-size="38" font-weight="700" fill="{accent}" '
+            f'text-anchor="middle" letter-spacing="-0.5">{title}</text>'
         )
 
-        # Subtle separator line
+        # Subtle line under title
+        y += 20
         parts.append(
-            f'<line x1="{margin_x}" y1="110" x2="{canvas_w - margin_x}" y2="110" '
-            f'stroke="#E0E0E0" stroke-width="1"/>'
+            f'<line x1="{margin_x + 100}" y1="{y}" x2="{canvas_w - margin_x - 100}" y2="{y}" '
+            f'stroke="{primary}" stroke-width="2" opacity="0.3"/>'
         )
 
-        # Sections
-        n = len(sections)
-        section_start_y = 145
-        available_h = canvas_h - section_start_y - 100  # room for closing
-        section_h = min(150, (available_h - (n - 1) * 20) // max(n, 1))
-        section_gap = 20
-
-        for i, section in enumerate(sections):
-            sy = section_start_y + i * (section_h + section_gap)
-            color = INFOGRAFIA_COLORS[i % len(INFOGRAFIA_COLORS)]
-            color_light = self._lighten_color(color, 0.92)
-
-            title = xml_escape(section.get("title", ""))
-            icon = xml_escape(section.get("icon", ""))
-            what = xml_escape(section.get("what", ""))
-            why = xml_escape(section.get("why", ""))
-            impact = xml_escape(section.get("impact", ""))
-
-            # Section background — very subtle
+        # Central idea — small, muted
+        central = xml_escape(data.get("central_idea", ""))
+        if central:
+            y += 30
             parts.append(
-                f'<rect x="{margin_x}" y="{sy}" width="{content_w}" '
-                f'height="{section_h}" rx="6" fill="{color_light}"/>'
+                f'<text x="{canvas_w // 2}" y="{y}" '
+                f'font-family="{DESIGN_TOKENS["font_body"]}" '
+                f'font-size="14" font-weight="400" fill="{accent_light}" '
+                f'text-anchor="middle">{central}</text>'
             )
 
-            # Left accent bar
+        # Vertical blocks — one per section
+        y += spacing_lg + 10
+        n = len(sections)
+        block_h = 140
+        block_gap = spacing
+
+        for i, sec in enumerate(sections):
+            color = SECTION_COLORS[i % len(SECTION_COLORS)]
+            color_bg = lighten_color(color, 0.92)
+            label = xml_escape(sec.get("label", ""))
+            bullets = sec.get("bullets", [])
+            example = xml_escape(sec.get("example", ""))
+
+            sy = y + i * (block_h + block_gap)
+
+            # Block background with rounded corners
             parts.append(
-                f'<rect x="{margin_x}" y="{sy}" width="4" height="{section_h}" '
+                f'<rect x="{margin_x}" y="{sy}" width="{content_w}" '
+                f'height="{block_h}" rx="{radius}" fill="{color_bg}"/>'
+            )
+
+            # Left color accent bar
+            parts.append(
+                f'<rect x="{margin_x}" y="{sy}" width="4" height="{block_h}" '
                 f'rx="2" fill="{color}"/>'
             )
 
-            # Icon
+            # Section number circle
+            cx_num = margin_x + 30
+            cy_num = sy + 30
             parts.append(
-                f'<text x="{margin_x + 24}" y="{sy + 32}" '
-                f'font-size="24">{icon}</text>'
+                f'<circle cx="{cx_num}" cy="{cy_num}" r="14" fill="{color}"/>'
+                f'<text x="{cx_num}" y="{cy_num + 1}" '
+                f'font-family="{DESIGN_TOKENS["font_heading"]}" '
+                f'font-size="14" font-weight="700" fill="white" '
+                f'text-anchor="middle" dominant-baseline="middle">{i + 1}</text>'
             )
 
-            # Section title
+            # Label — bold, colored
             parts.append(
-                f'<text x="{margin_x + 56}" y="{sy + 32}" '
-                f'font-family="\'Inter\', -apple-system, sans-serif" '
-                f'font-size="18" font-weight="600" fill="{color}">'
-                f'{title}</text>'
+                f'<text x="{margin_x + 56}" y="{sy + 35}" '
+                f'font-family="{DESIGN_TOKENS["font_heading"]}" '
+                f'font-size="18" font-weight="600" fill="{color}">{label}</text>'
             )
 
-            # What / Why / Impact — three clean lines
-            label_x = margin_x + 28
-            value_x = margin_x + 100
-            line_y = sy + 60
+            # Bullets — clean, spaced
+            bullet_y = sy + 65
+            for b in bullets[:3]:
+                escaped_b = xml_escape(b)
+                parts.append(
+                    f'<circle cx="{margin_x + 30}" cy="{bullet_y - 4}" r="3" fill="{color}" opacity="0.5"/>'
+                    f'<text x="{margin_x + 42}" y="{bullet_y}" '
+                    f'font-family="{DESIGN_TOKENS["font_body"]}" '
+                    f'font-size="14" font-weight="400" fill="{accent}">{escaped_b}</text>'
+                )
+                bullet_y += 24
 
-            for label, value in [("What", what), ("Why", why), ("Impact", impact)]:
-                if value:
-                    parts.append(
-                        f'<text x="{label_x}" y="{line_y}" '
-                        f'font-family="\'Inter\', -apple-system, sans-serif" '
-                        f'font-size="11" font-weight="600" fill="#999" '
-                        f'letter-spacing="0.5">{label.upper()}</text>'
-                    )
-                    parts.append(
-                        f'<text x="{value_x}" y="{line_y}" '
-                        f'font-family="\'Inter\', -apple-system, sans-serif" '
-                        f'font-size="13" font-weight="400" fill="#444">'
-                        f'{value}</text>'
-                    )
-                    line_y += 24
+            # Example — italic, muted, at bottom of block
+            if example:
+                parts.append(
+                    f'<text x="{margin_x + 28}" y="{sy + block_h - 14}" '
+                    f'font-family="{DESIGN_TOKENS["font_body"]}" '
+                    f'font-size="12" font-weight="400" fill="{accent_light}" '
+                    f'font-style="italic">e.g. {example}</text>'
+                )
 
-        # Closing phrase — subtle, centered
-        if closing:
+        # Footer area
+        footer_y = y + n * (block_h + block_gap) + spacing
+
+        # Practice plan — micro footer
+        plan = data.get("practice_plan", {})
+        daily = plan.get("daily_5min", [])
+        weekly = plan.get("weekly", [])
+
+        if daily or weekly:
             parts.append(
-                f'<line x1="{canvas_w // 2 - 60}" y1="{canvas_h - 70}" '
-                f'x2="{canvas_w // 2 + 60}" y2="{canvas_h - 70}" '
-                f'stroke="#E0E0E0" stroke-width="1"/>'
+                f'<line x1="{margin_x}" y1="{footer_y}" '
+                f'x2="{canvas_w - margin_x}" y2="{footer_y}" '
+                f'stroke="#E5E7EB" stroke-width="1"/>'
             )
+            footer_y += 24
             parts.append(
-                f'<text x="{canvas_w // 2}" y="{canvas_h - 40}" '
-                f'font-family="\'Inter\', -apple-system, sans-serif" '
-                f'font-size="15" font-weight="500" fill="#888" '
-                f'text-anchor="middle" font-style="italic" '
-                f'letter-spacing="0.3">{closing}</text>'
+                f'<text x="{margin_x}" y="{footer_y}" '
+                f'font-family="{DESIGN_TOKENS["font_heading"]}" '
+                f'font-size="12" font-weight="600" fill="{primary}" '
+                f'letter-spacing="1">PRACTICE PLAN</text>'
             )
+            footer_y += 20
+            all_items = [f"Daily: {d}" for d in daily] + [f"Weekly: {w}" for w in weekly]
+            item_text = xml_escape("  |  ".join(all_items))
+            parts.append(
+                f'<text x="{margin_x}" y="{footer_y}" '
+                f'font-family="{DESIGN_TOKENS["font_body"]}" '
+                f'font-size="11" font-weight="400" fill="{accent_light}">'
+                f'{item_text}</text>'
+            )
+            footer_y += spacing
+
+        # Calculate actual height
+        canvas_h = footer_y + spacing
+        # Fix the background rect height
+        parts[0] = f'<rect width="{canvas_w}" height="{canvas_h}" fill="{DESIGN_TOKENS["background"]}"/>'
 
         svg_body = "\n    ".join(parts)
-        return html_page_executive(data.get("headline", "Infografia"), svg_body, canvas_w, canvas_h)
-
-    @staticmethod
-    def _lighten_color(hex_color: str, factor: float) -> str:
-        """Lighten a hex color toward white by the given factor (0-1)."""
-        hex_color = hex_color.lstrip("#")
-        r = int(hex_color[0:2], 16)
-        g = int(hex_color[2:4], 16)
-        b = int(hex_color[4:6], 16)
-        r = int(r + (255 - r) * factor)
-        g = int(g + (255 - g) * factor)
-        b = int(b + (255 - b) * factor)
-        return f"#{r:02x}{g:02x}{b:02x}"
+        return html_page_clean(data.get("title", "Infografia"), svg_body, canvas_w, canvas_h)

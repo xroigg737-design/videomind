@@ -10,29 +10,19 @@ from pipeline.formats.base import MAX_TRANSCRIPT_LENGTH  # re-export for tests
 
 _sketchnote = SketchnoteFormat()
 
-# Re-export prompts so existing code that reads them still works
+# Re-export prompts (empty strings in new architecture)
 SYSTEM_PROMPT = _sketchnote.SYSTEM_PROMPT
 EXTRACTION_PROMPT = _sketchnote.EXTRACTION_PROMPT
 
 
 def _call_claude(transcript: str, language: str = "") -> dict:
-    """Send transcript to Claude and parse the JSON response."""
+    """Legacy: Send transcript to Claude and parse the JSON response."""
     return _sketchnote.call_claude(transcript, language=language)
 
 
 def _generate_markdown(data: dict) -> str:
     """Generate a Markdown sketchnote summary."""
     return _sketchnote.generate_markdown(data)
-
-
-def _layout_sections(sections: list) -> tuple:
-    """Compute grid positions for sections. Returns (positions, rows, cell_h)."""
-    return SketchnoteFormat._layout_sections(sections)
-
-
-def _svg_connection(conn: dict, sections: list, positions: list) -> str:
-    """Generate an SVG path for a connection arrow between two sections."""
-    return SketchnoteFormat._svg_connection(conn, sections, positions)
 
 
 def _generate_html(data: dict) -> str:

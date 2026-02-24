@@ -199,44 +199,28 @@ class TestTranscribeAudioCached:
 
 
 # ---------------------------------------------------------------------------
-# pipeline/mindmap.py – _generate_markdown
+# pipeline/mindmap.py – _generate_markdown (uses unified JSON now)
 # ---------------------------------------------------------------------------
 
-SAMPLE_SKETCHNOTE_DATA = {
-    "title": "NEURAL NETS",
+SAMPLE_UNIFIED_DATA = {
+    "title": "Neural Networks",
+    "central_idea": "Deep learning transforms AI",
+    "content_type": "conceptual",
     "sections": [
-        {
-            "id": "s1",
-            "heading": "ARCHITECTURE",
-            "icon": "\U0001f3d7\ufe0f",
-            "points": ["Organize neurons", "Deep networks"],
-            "color": "#4A90D9",
-        },
-        {
-            "id": "s2",
-            "heading": "TRAINING",
-            "icon": "\U0001f3cb\ufe0f",
-            "points": ["Backpropagation", "Gradient descent"],
-            "color": "#E67E22",
-        },
-        {
-            "id": "s3",
-            "heading": "DATA FLOW",
-            "icon": "\U0001f4ca",
-            "points": ["Forward pass", "Loss computation"],
-            "color": "#2ECC71",
-        },
-        {
-            "id": "s4",
-            "heading": "DEPLOY",
-            "icon": "\U0001f680",
-            "points": ["Scale models", "Monitor drift"],
-            "color": "#9B59B6",
-        },
+        {"label": "Architecture", "bullets": ["Layer organization", "Deep networks"],
+         "example": "Convolutional layers"},
+        {"label": "Training", "bullets": ["Backpropagation", "Gradient descent"],
+         "example": "Loss minimization"},
+        {"label": "Data Flow", "bullets": ["Forward pass", "Loss computation"],
+         "example": "Batch processing"},
+        {"label": "Deployment", "bullets": ["Scale models", "Monitor drift"],
+         "example": "Cloud inference"},
     ],
-    "connections": [
-        {"from": "s1", "to": "s2", "label": "feeds"},
-    ],
+    "practice_plan": {
+        "daily_5min": ["Review metrics", "Read paper", "Code exercise"],
+        "weekly": ["Train model"],
+    },
+    "cta_removed": "",
 }
 
 
@@ -244,33 +228,33 @@ class TestGenerateMarkdown:
     def test_contains_title_as_heading(self):
         from pipeline.mindmap import _generate_markdown
 
-        md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert md.startswith("# NEURAL NETS\n")
+        md = _generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert md.startswith("# Neural Networks\n")
 
-    def test_contains_section_headings_with_icons(self):
+    def test_contains_section_labels(self):
         from pipeline.mindmap import _generate_markdown
 
-        md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "\U0001f3d7\ufe0f ARCHITECTURE" in md
-        assert "\U0001f3cb\ufe0f TRAINING" in md
+        md = _generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "Architecture" in md
+        assert "Training" in md
 
     def test_contains_bullet_points(self):
         from pipeline.mindmap import _generate_markdown
 
-        md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "- Organize neurons" in md
+        md = _generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "- Layer organization" in md
         assert "- Backpropagation" in md
 
-    def test_contains_connections(self):
+    def test_contains_practice_plan(self):
         from pipeline.mindmap import _generate_markdown
 
-        md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "feeds" in md
+        md = _generate_markdown(SAMPLE_UNIFIED_DATA)
+        assert "Practice Plan" in md
 
     def test_sections_have_points(self):
         from pipeline.mindmap import _generate_markdown
 
-        md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
+        md = _generate_markdown(SAMPLE_UNIFIED_DATA)
         assert "- Forward pass" in md
         assert "- Scale models" in md
 
@@ -284,56 +268,48 @@ class TestGenerateHtml:
     def test_contains_title(self):
         from pipeline.mindmap import _generate_html
 
-        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "NEURAL NETS" in html
+        html = _generate_html(SAMPLE_UNIFIED_DATA)
+        assert "Neural Networks" in html
 
     def test_is_valid_html_structure(self):
         from pipeline.mindmap import _generate_html
 
-        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
+        html = _generate_html(SAMPLE_UNIFIED_DATA)
         assert html.startswith("<!DOCTYPE html>")
         assert "</html>" in html
 
     def test_contains_svg_element(self):
         from pipeline.mindmap import _generate_html
 
-        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
+        html = _generate_html(SAMPLE_UNIFIED_DATA)
         assert "<svg" in html
         assert "</svg>" in html
 
-    def test_contains_section_headings(self):
+    def test_contains_section_labels(self):
         from pipeline.mindmap import _generate_html
 
-        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "ARCHITECTURE" in html
-        assert "TRAINING" in html
+        html = _generate_html(SAMPLE_UNIFIED_DATA)
+        assert "Architecture" in html
+        assert "Training" in html
 
     def test_contains_sketchy_filter(self):
         from pipeline.mindmap import _generate_html
 
-        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
+        html = _generate_html(SAMPLE_UNIFIED_DATA)
         assert "feTurbulence" in html
         assert "feDisplacementMap" in html
 
     def test_contains_caveat_font(self):
         from pipeline.mindmap import _generate_html
 
-        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
+        html = _generate_html(SAMPLE_UNIFIED_DATA)
         assert "Caveat" in html
 
-    def test_contains_connection_arrow(self):
+    def test_contains_design_tokens(self):
         from pipeline.mindmap import _generate_html
 
-        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "arrowhead" in html
-        assert "feeds" in html
-
-    def test_contains_thick_strokes(self):
-        from pipeline.mindmap import _generate_html
-
-        html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert 'stroke-width="3"' in html
-        assert "stroke=\"#222\"" in html
+        html = _generate_html(SAMPLE_UNIFIED_DATA)
+        assert "#2D5BFF" in html
 
 
 # ---------------------------------------------------------------------------
@@ -347,20 +323,20 @@ class TestCallClaude:
         from pipeline.mindmap import _call_claude
 
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_UNIFIED_DATA))]
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
         mock_anthropic_cls.return_value = mock_client
 
         result = _call_claude("some transcript")
-        assert result["title"] == "NEURAL NETS"
+        assert result["title"] == "Neural Networks"
         assert len(result["sections"]) == 4
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_handles_markdown_code_block_response(self, mock_anthropic_cls):
         from pipeline.mindmap import _call_claude
 
-        wrapped = f"```json\n{json.dumps(SAMPLE_SKETCHNOTE_DATA)}\n```"
+        wrapped = f"```json\n{json.dumps(SAMPLE_UNIFIED_DATA)}\n```"
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text=wrapped)]
         mock_client = MagicMock()
@@ -368,14 +344,14 @@ class TestCallClaude:
         mock_anthropic_cls.return_value = mock_client
 
         result = _call_claude("some transcript")
-        assert result["title"] == "NEURAL NETS"
+        assert result["title"] == "Neural Networks"
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_appends_language_instruction(self, mock_anthropic_cls):
         from pipeline.mindmap import _call_claude
 
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_UNIFIED_DATA))]
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
         mock_anthropic_cls.return_value = mock_client
@@ -392,7 +368,7 @@ class TestCallClaude:
         from pipeline.mindmap import _call_claude
 
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_UNIFIED_DATA))]
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
         mock_anthropic_cls.return_value = mock_client
@@ -408,7 +384,7 @@ class TestCallClaude:
         from pipeline.mindmap import _call_claude
 
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_UNIFIED_DATA))]
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
         mock_anthropic_cls.return_value = mock_client
@@ -419,18 +395,19 @@ class TestCallClaude:
         content = call_args.kwargs["messages"][0]["content"]
         assert "Write ALL content" not in content
 
-    @patch("pipeline.formats.base.anthropic.Anthropic")
+    @patch("pipeline.formats.content_engine.anthropic.Anthropic")
     def test_truncates_long_transcript(self, mock_anthropic_cls):
-        from pipeline.mindmap import MAX_TRANSCRIPT_LENGTH, _call_claude
+        from pipeline.mindmap import MAX_TRANSCRIPT_LENGTH
+        from pipeline.formats.content_engine import extract_content
 
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_UNIFIED_DATA))]
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
         mock_anthropic_cls.return_value = mock_client
 
         long_text = "x" * (MAX_TRANSCRIPT_LENGTH + 5000)
-        _call_claude(long_text)
+        extract_content(long_text)
 
         call_args = mock_client.messages.create.call_args
         content = call_args.kwargs["messages"][0]["content"]
@@ -444,14 +421,14 @@ class TestCallClaude:
 
 class TestGenerateMindmap:
     def _mock_anthropic(self, mock_cls):
-        """Set up the Anthropic mock to return SAMPLE_SKETCHNOTE_DATA."""
+        """Set up the Anthropic mock to return unified content JSON."""
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_SKETCHNOTE_DATA))]
+        mock_response.content = [MagicMock(text=json.dumps(SAMPLE_UNIFIED_DATA))]
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_response
         mock_cls.return_value = mock_client
 
-    @patch("pipeline.formats.base.anthropic.Anthropic")
+    @patch("pipeline.formats.content_engine.anthropic.Anthropic")
     def test_generates_all_formats(self, mock_cls, tmp_path):
         self._mock_anthropic(mock_cls)
         from pipeline.mindmap import generate_mindmap
@@ -464,7 +441,7 @@ class TestGenerateMindmap:
         assert os.path.exists(result["md_path"])
         assert os.path.exists(result["html_path"])
 
-    @patch("pipeline.formats.base.anthropic.Anthropic")
+    @patch("pipeline.formats.content_engine.anthropic.Anthropic")
     def test_generates_json_only(self, mock_cls, tmp_path):
         self._mock_anthropic(mock_cls)
         from pipeline.mindmap import generate_mindmap
@@ -475,9 +452,9 @@ class TestGenerateMindmap:
 
         with open(result["json_path"]) as f:
             data = json.load(f)
-        assert data["title"] == "NEURAL NETS"
+        assert data["title"] == "Neural Networks"
 
-    @patch("pipeline.formats.base.anthropic.Anthropic")
+    @patch("pipeline.formats.content_engine.anthropic.Anthropic")
     def test_generates_md_only(self, mock_cls, tmp_path):
         self._mock_anthropic(mock_cls)
         from pipeline.mindmap import generate_mindmap
@@ -488,9 +465,9 @@ class TestGenerateMindmap:
 
         with open(result["md_path"]) as f:
             content = f.read()
-        assert "# NEURAL NETS" in content
+        assert "# Neural Networks" in content
 
-    @patch("pipeline.formats.base.anthropic.Anthropic")
+    @patch("pipeline.formats.content_engine.anthropic.Anthropic")
     def test_html_contains_svg(self, mock_cls, tmp_path):
         self._mock_anthropic(mock_cls)
         from pipeline.mindmap import generate_mindmap
@@ -526,7 +503,6 @@ class TestExtractAudioFromFolder:
     def test_processes_supported_extensions(self, mock_extract, tmp_path):
         from pipeline.extractor import extract_audio_from_folder
 
-        # Create fake video files
         (tmp_path / "video1.mp4").write_text("")
         (tmp_path / "video2.mkv").write_text("")
         (tmp_path / "notes.txt").write_text("")
@@ -535,7 +511,6 @@ class TestExtractAudioFromFolder:
         mock_extract.return_value = {"title": "test", "audio_path": "/fake/audio.mp3"}
 
         results = extract_audio_from_folder(str(tmp_path), out_dir)
-        # Should be called for .mp4 and .mkv, not .txt
         assert mock_extract.call_count == 2
         assert len(results) == 2
 
