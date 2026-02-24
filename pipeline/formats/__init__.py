@@ -49,6 +49,7 @@ def generate_visual_format(
     formats: str = "all",
     language: str = "",
     auto_detect: bool = False,
+    dalle_options: dict | None = None,
 ) -> dict:
     """Generate a visual format from a transcript.
 
@@ -59,6 +60,7 @@ def generate_visual_format(
         formats: Output file formats — "all", "html", "md", or "json".
         language: Detected language (e.g. "Spanish"). Empty = no hint.
         auto_detect: If True, ignore format_type and auto-select based on content.
+        dalle_options: Optional dict with DALL-E generation settings.
 
     Returns:
         dict with json_path, md_path, html_path, data keys.
@@ -72,7 +74,10 @@ def generate_visual_format(
         print(f"  Auto-detected format: {format_type} (content_type={content_type})")
 
     fmt = get_format(format_type)
-    return fmt.generate(transcript, output_dir, formats=formats, language=language)
+    return fmt.generate(
+        transcript, output_dir, formats=formats, language=language,
+        dalle_options=dalle_options,
+    )
 
 
 def generate_sketchnote(transcript: str, output_dir: str, **kwargs) -> dict:

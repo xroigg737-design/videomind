@@ -89,6 +89,26 @@
   </div>
   {% endif %}
 
+  {% if files.dalle_companions or files.dalle_icon_grid %}
+  <div class="section">
+    <h2>Visuals DALL-E</h2>
+    {% if files.dalle_icon_grid %}
+    <div style="margin-bottom: 16px;">
+      <h3 style="font-size: 0.95rem; color: #aaa; margin-bottom: 8px;">Icones de seccions</h3>
+      <img src="/output/{{ title | urlencode }}/dalle_icon_grid.png" alt="DALL-E icon grid"
+           style="max-width: 300px; border-radius: 8px; border: 1px solid #0f3460;">
+    </div>
+    {% endif %}
+    {% for companion in files.dalle_companions %}
+    <div style="margin-bottom: 16px;">
+      <h3 style="font-size: 0.95rem; color: #aaa; margin-bottom: 8px;">Imatge complementaria</h3>
+      <img src="/output/{{ title | urlencode }}/{{ companion }}" alt="DALL-E companion"
+           style="max-width: 100%; border-radius: 8px; border: 1px solid #0f3460;">
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if transcript %}
   <div class="section">
     <h2>Transcripcio</h2>
@@ -145,6 +165,12 @@
       {% if files.infografia_json %}
       <a href="/output/{{ title | urlencode }}/infografia.json" class="btn btn-sm btn-outline" download>Infografia JSON</a>
       {% endif %}
+      {% if files.dalle_icon_grid %}
+      <a href="/output/{{ title | urlencode }}/dalle_icon_grid.png" class="btn btn-sm btn-outline" download>DALL-E Icones PNG</a>
+      {% endif %}
+      {% for companion in files.dalle_companions %}
+      <a href="/output/{{ title | urlencode }}/{{ companion }}" class="btn btn-sm btn-outline" download>DALL-E Companion PNG</a>
+      {% endfor %}
     </div>
   </div>
 </div>

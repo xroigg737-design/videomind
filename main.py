@@ -93,6 +93,25 @@ Examples:
         help="Auto-open HTML result in browser",
     )
 
+    # DALL-E image generation flags
+    parser.add_argument(
+        "--dalle",
+        action="store_true",
+        help="Enable DALL-E image generation (section icons). Requires OPENAI_API_KEY.",
+    )
+    parser.add_argument(
+        "--dalle-companion",
+        action="store_true",
+        dest="dalle_companion",
+        help="Also generate a DALL-E companion illustration (extra $0.04-0.08).",
+    )
+    parser.add_argument(
+        "--dalle-background",
+        action="store_true",
+        dest="dalle_background",
+        help="Also generate a DALL-E background texture (extra $0.04).",
+    )
+
     return parser.parse_args()
 
 
@@ -104,6 +123,7 @@ def process_video(
     output_format: str,
     open_browser: bool,
     visual_type: str = DEFAULT_VISUAL_TYPE,
+    dalle_options: dict | None = None,
 ):
     """Run the transcription + visual format pipeline for one video."""
     video_dir = os.path.dirname(audio_path)
@@ -130,6 +150,7 @@ def process_video(
             format_type=visual_type,
             formats=output_format,
             language=detected_language,
+            dalle_options=dalle_options,
         )
     except Exception as e:
         print(f"  Error generating {visual_type}: {e}")
@@ -203,6 +224,16 @@ def main():
 
     print(f"\n  Found {len(videos)} video(s) to process.")
 
+    # Build DALL-E options
+    dalle_options = None
+    if args.dalle:
+        dalle_options = {
+            "enabled": True,
+            "icons": True,
+            "companion": args.dalle_companion,
+            "background": args.dalle_background,
+        }
+
     # Step 2-3: Process each video
     for video in videos:
         process_video(
@@ -213,6 +244,7 @@ def main():
             output_format=args.format,
             open_browser=args.open_browser,
             visual_type=args.visual_type,
+            dalle_options=dalle_options,
         )
 
     print(f"\n{'='*60}")

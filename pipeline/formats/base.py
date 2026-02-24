@@ -228,8 +228,14 @@ class VisualFormat(ABC):
         """Generate Markdown representation from unified content JSON."""
 
     @abstractmethod
-    def generate_html(self, data: dict) -> str:
-        """Generate standalone HTML page with SVG visualization from unified content JSON."""
+    def generate_html(self, data: dict, dalle_images: dict | None = None) -> str:
+        """Generate standalone HTML page with SVG visualization from unified content JSON.
+
+        Args:
+            data: Unified content JSON from Layer 2.
+            dalle_images: Optional dict from dalle_generator.generate_all_images()
+                          with keys 'icons', 'companion', 'background'.
+        """
 
     # -----------------------------------------------------------------
     # Orchestration — 3-layer pipeline
@@ -241,8 +247,14 @@ class VisualFormat(ABC):
         output_dir: str,
         formats: str = "all",
         language: str = "",
+        dalle_options: dict | None = None,
     ) -> dict:
         """Orchestrate the 3-layer pipeline: extract → reduce → render.
+
+        Args:
+            dalle_options: Optional dict with keys 'enabled', 'icons', 'companion',
+                           'background'. When enabled, runs DALL-E generation between
+                           Layer 2 and Layer 3.
 
         Returns dict with json_path, md_path, html_path, data keys.
         """
@@ -288,6 +300,22 @@ class VisualFormat(ABC):
         word_count = count_visible_words(data)
         print(f"    Visible words: {word_count}")
 
+        # ── Image Layer: DALL-E generation (optional) ──
+        dalle_images = None
+        if dalle_options and dalle_options.get("enabled"):
+            from config import validate_dalle_config
+            if validate_dalle_config():
+                from pipeline.dalle_generator import generate_all_images
+                print("  Image Layer: Generating DALL-E images...")
+                dalle_images = generate_all_images(
+                    data,
+                    format_type=self.FORMAT_TYPE,
+                    output_dir=output_dir,
+                    icons=dalle_options.get("icons", True),
+                    companion=dalle_options.get("companion", False),
+                    background=dalle_options.get("background", False),
+                )
+
         # ── Layer 3: Layout Engine — format-specific rendering ──
         print(f"  Layer 3: Rendering {self.FORMAT_TYPE} layout...")
 
@@ -311,7 +339,7 @@ class VisualFormat(ABC):
             print(f"  Saved: {md_path}")
 
         if formats in ("all", "html"):
-            html_content = self.generate_html(data)
+            html_content = self.generate_html(data, dalle_images=dalle_images)
             html_path = os.path.join(output_dir, f"{prefix}.html")
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html_content)

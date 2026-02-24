@@ -48,7 +48,7 @@ class MindmapFormat(VisualFormat):
 
     # -- HTML / SVG (radial mindmap) -----------------------------------------
 
-    def generate_html(self, data: dict) -> str:
+    def generate_html(self, data: dict, dalle_images: dict | None = None) -> str:
         title = xml_escape(data.get("title", "Mind Map"))
         sections = data.get("sections", [])[:4]
 
@@ -60,10 +60,25 @@ class MindmapFormat(VisualFormat):
         bg = DESIGN_TOKENS["background"]
         radius = DESIGN_TOKENS["border_radius"]
 
+        # Resolve DALL-E background
+        dalle_bg_uri = None
+        if dalle_images:
+            bg_data = dalle_images.get("background")
+            if bg_data:
+                dalle_bg_uri = bg_data.get("bg_uri")
+
         parts = []
 
         # Pure white background
         parts.append(f'<rect width="{W}" height="{H}" fill="{bg}"/>')
+
+        # DALL-E background texture (low opacity)
+        if dalle_bg_uri:
+            parts.append(
+                f'<image href="{dalle_bg_uri}" x="0" y="0" '
+                f'width="{W}" height="{H}" '
+                f'preserveAspectRatio="xMidYMid slice" opacity="0.06"/>'
+            )
 
         # Subtle radial grid (very faint concentric circles)
         for r in [150, 300]:

@@ -116,6 +116,24 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label>
+          <input type="checkbox" name="dalle_enabled" id="dalle_enabled" onchange="toggleDalleOptions()">
+          Generar imatges amb DALL-E ($)
+        </label>
+        <div class="model-desc">Requereix OPENAI_API_KEY. Icones de seccio ~$0.04.</div>
+        <div id="dalle-options" style="display: none; margin-top: 8px; padding-left: 20px;">
+          <label style="display: block; margin-bottom: 4px;">
+            <input type="checkbox" name="dalle_companion">
+            Imatge complementaria (+$0.04-0.08)
+          </label>
+          <label style="display: block;">
+            <input type="checkbox" name="dalle_background">
+            Textura de fons (+$0.04)
+          </label>
+        </div>
+      </div>
+
       <button type="submit" class="btn" style="width: 100%;">Processar</button>
     </form>
   </div>
@@ -140,6 +158,11 @@ const MODEL_DESCS = {
 function updateModelDesc() {
   const sel = document.getElementById('model');
   document.getElementById('model-desc').textContent = MODEL_DESCS[sel.value] || '';
+}
+
+function toggleDalleOptions() {
+  const cb = document.getElementById('dalle_enabled');
+  document.getElementById('dalle-options').style.display = cb.checked ? 'block' : 'none';
 }
 
 async function classifyImage(input) {

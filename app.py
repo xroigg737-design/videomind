@@ -88,6 +88,7 @@ def _run_job(job_id):
         language = job["lang"]
         output_format = job["format"]
         visual_type = job.get("visual_type", "sketchnote")
+        dalle_options = job.get("dalle_options")
 
         os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -149,6 +150,7 @@ def _run_job(job_id):
                     format_type=visual_type,
                     formats=output_format,
                     language=detected_language,
+                    dalle_options=dalle_options,
                 )
             except Exception as e:
                 logger.fail(f"Error generant {format_label}: {e}")
@@ -198,6 +200,7 @@ def _scan_library():
         )
         date_str = datetime.fromtimestamp(mtime).strftime("%d/%m/%Y %H:%M")
 
+        has_dalle = any(f.startswith("dalle_") for f in files)
         videos.append({
             "title": name,
             "date": date_str,
@@ -208,6 +211,7 @@ def _scan_library():
             "has_json": "mindmap.json" in files,
             "has_mindmap_tree": "mindmap_tree.html" in files,
             "has_infografia": "infografia.html" in files,
+            "has_dalle": has_dalle,
         })
 
     # Sort by date, newest first
@@ -269,6 +273,17 @@ def process():
             return render_template("index.html", error=f"La ruta no existeix: {folder}")
         source_val = {"folder": folder}
 
+    # DALL-E options
+    dalle_enabled = request.form.get("dalle_enabled") == "on"
+    dalle_options = None
+    if dalle_enabled:
+        dalle_options = {
+            "enabled": True,
+            "icons": True,
+            "companion": request.form.get("dalle_companion") == "on",
+            "background": request.form.get("dalle_background") == "on",
+        }
+
     # Create job
     job_id = uuid.uuid4().hex[:12]
     jobs[job_id] = {
@@ -278,6 +293,7 @@ def process():
         "lang": lang,
         "format": fmt,
         "visual_type": visual_type,
+        "dalle_options": dalle_options,
         "events": Queue(),
         **source_val,
     }
@@ -332,6 +348,12 @@ def viewer(title):
         abort(404)
 
     files_present = set(os.listdir(video_dir))
+    # Detect DALL-E companion images
+    dalle_companions = sorted(
+        f for f in files_present if f.startswith("dalle_companion_") and f.endswith(".png")
+    )
+    dalle_icon_grid = "dalle_icon_grid.png" in files_present
+
     files = {
         "audio": "audio.mp3" in files_present,
         "transcript": "transcript.txt" in files_present,
@@ -345,6 +367,8 @@ def viewer(title):
         "infografia_html": "infografia.html" in files_present,
         "infografia_md": "infografia.md" in files_present,
         "infografia_json": "infografia.json" in files_present,
+        "dalle_companions": dalle_companions,
+        "dalle_icon_grid": dalle_icon_grid,
     }
 
     # Load transcript text

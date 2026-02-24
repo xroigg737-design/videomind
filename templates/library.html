@@ -65,6 +65,7 @@
         {% if v.has_html %}<span class="badge badge-ok">Sketchnote</span>{% endif %}
         {% if v.has_mindmap_tree %}<span class="badge badge-ok">Mapa mental</span>{% endif %}
         {% if v.has_infografia %}<span class="badge badge-ok">Infografia</span>{% endif %}
+        {% if v.has_dalle %}<span class="badge badge-ok">DALL-E</span>{% endif %}
       </div>
       <div class="card-actions">
         <a href="/viewer/{{ v.title | urlencode }}" class="btn btn-sm btn-outline">Veure</a>

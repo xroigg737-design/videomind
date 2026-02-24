@@ -16,6 +16,10 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 # Anthropic model for concept map generation
 CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
 
+# DALL-E settings
+DALLE_MODEL = "dall-e-3"
+DALLE_QUALITY = "standard"
+
 # Default settings
 DEFAULT_WHISPER_MODEL = "base"
 DEFAULT_LANGUAGE = "auto"
@@ -38,6 +42,18 @@ def validate_config():
         print(
             "Error: ANTHROPIC_API_KEY not set. "
             "Set it as an environment variable or in a .env file.",
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
+def validate_dalle_config():
+    """Check that DALL-E configuration is present. Returns True if ready."""
+    if not OPENAI_API_KEY:
+        print(
+            "Warning: OPENAI_API_KEY not set. "
+            "DALL-E image generation will be skipped.",
             file=sys.stderr,
         )
         return False

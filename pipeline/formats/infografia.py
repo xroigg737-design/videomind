@@ -57,7 +57,7 @@ class InfografiaFormat(VisualFormat):
 
     # -- HTML / SVG (clean vertical blocks) ----------------------------------
 
-    def generate_html(self, data: dict) -> str:
+    def generate_html(self, data: dict, dalle_images: dict | None = None) -> str:
         title = xml_escape(data.get("title", "Infografia"))
         sections = data.get("sections", [])[:4]
 
@@ -71,10 +71,29 @@ class InfografiaFormat(VisualFormat):
         accent = DESIGN_TOKENS["accent"]
         accent_light = DESIGN_TOKENS["accent_light"]
 
+        # Resolve DALL-E images
+        dalle_icon_uris = None
+        dalle_bg_uri = None
+        if dalle_images:
+            icons_data = dalle_images.get("icons")
+            if icons_data:
+                dalle_icon_uris = icons_data.get("icon_uris")
+            bg_data = dalle_images.get("background")
+            if bg_data:
+                dalle_bg_uri = bg_data.get("bg_uri")
+
         parts = []
 
         # White background
         parts.append(f'<rect width="{canvas_w}" height="2000" fill="{DESIGN_TOKENS["background"]}"/>')
+
+        # DALL-E background texture (low opacity)
+        if dalle_bg_uri:
+            parts.append(
+                f'<image href="{dalle_bg_uri}" x="0" y="0" '
+                f'width="{canvas_w}" height="2000" '
+                f'preserveAspectRatio="xMidYMid slice" opacity="0.06"/>'
+            )
 
         # Big title — top, centered, bold
         y = 70
@@ -130,16 +149,23 @@ class InfografiaFormat(VisualFormat):
                 f'rx="2" fill="{color}"/>'
             )
 
-            # Section number circle
+            # Section icon or number circle
             cx_num = margin_x + 30
             cy_num = sy + 30
-            parts.append(
-                f'<circle cx="{cx_num}" cy="{cy_num}" r="14" fill="{color}"/>'
-                f'<text x="{cx_num}" y="{cy_num + 1}" '
-                f'font-family="{DESIGN_TOKENS["font_heading"]}" '
-                f'font-size="14" font-weight="700" fill="white" '
-                f'text-anchor="middle" dominant-baseline="middle">{i + 1}</text>'
-            )
+            if dalle_icon_uris and i < len(dalle_icon_uris):
+                parts.append(
+                    f'<image href="{dalle_icon_uris[i]}" '
+                    f'x="{cx_num - 16}" y="{cy_num - 16}" width="32" height="32" '
+                    f'preserveAspectRatio="xMidYMid meet"/>'
+                )
+            else:
+                parts.append(
+                    f'<circle cx="{cx_num}" cy="{cy_num}" r="14" fill="{color}"/>'
+                    f'<text x="{cx_num}" y="{cy_num + 1}" '
+                    f'font-family="{DESIGN_TOKENS["font_heading"]}" '
+                    f'font-size="14" font-weight="700" fill="white" '
+                    f'text-anchor="middle" dominant-baseline="middle">{i + 1}</text>'
+                )
 
             # Label — bold, colored
             parts.append(

@@ -61,7 +61,7 @@ class SketchnoteFormat(VisualFormat):
 
     # -- HTML / SVG (4 quadrants, hand-drawn style) --------------------------
 
-    def generate_html(self, data: dict) -> str:
+    def generate_html(self, data: dict, dalle_images: dict | None = None) -> str:
         title = xml_escape(data.get("title", "Sketchnote"))
         sections = data.get("sections", [])[:4]
         plan = data.get("practice_plan", {})
@@ -86,10 +86,29 @@ class SketchnoteFormat(VisualFormat):
         font_body = DESIGN_TOKENS["font_body"]
         radius = DESIGN_TOKENS["border_radius"]
 
+        # Resolve DALL-E images
+        dalle_icon_uris = None
+        dalle_bg_uri = None
+        if dalle_images:
+            icons_data = dalle_images.get("icons")
+            if icons_data:
+                dalle_icon_uris = icons_data.get("icon_uris")
+            bg_data = dalle_images.get("background")
+            if bg_data:
+                dalle_bg_uri = bg_data.get("bg_uri")
+
         parts = []
 
         # Cream/warm background
         parts.append(f'<rect width="{canvas_w}" height="{canvas_h}" fill="#FAFAF8" rx="4"/>')
+
+        # DALL-E background texture (low opacity)
+        if dalle_bg_uri:
+            parts.append(
+                f'<image href="{dalle_bg_uri}" x="0" y="0" '
+                f'width="{canvas_w}" height="{canvas_h}" '
+                f'preserveAspectRatio="xMidYMid slice" opacity="0.08"/>'
+            )
 
         # Strong headline — large, bold, centered, hand-drawn feel
         parts.append(
@@ -148,10 +167,17 @@ class SketchnoteFormat(VisualFormat):
             )
 
             # Large icon — prominent, left side
-            parts.append(
-                f'<text x="{qx + 28}" y="{qy + 52}" '
-                f'font-size="36" filter="url(#sketchy)">{icon}</text>'
-            )
+            if dalle_icon_uris and i < len(dalle_icon_uris):
+                parts.append(
+                    f'<image href="{dalle_icon_uris[i]}" '
+                    f'x="{qx + 10}" y="{qy + 18}" width="48" height="48" '
+                    f'preserveAspectRatio="xMidYMid meet"/>'
+                )
+            else:
+                parts.append(
+                    f'<text x="{qx + 28}" y="{qy + 52}" '
+                    f'font-size="36" filter="url(#sketchy)">{icon}</text>'
+                )
 
             # Label — bold, hand-drawn, right of icon
             parts.append(
