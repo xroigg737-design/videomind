@@ -1,7 +1,8 @@
-"""Mindmap visual format — radial hierarchical tree.
+"""Mindmap visual format — Radial Executive Mindmap.
 
-Generates a mind-map with a central node and radiating branches,
-rendered as an SVG with curved connections.
+Minimalist Apple/consulting aesthetic: central dominant node,
+4-5 symmetric branches with soft pastel colors, curved organic
+connections, clean sans-serif typography, lots of white space.
 
 Phase 3 transform: receives a structural model and produces a mindmap JSON.
 """
@@ -10,7 +11,7 @@ import math
 
 from xml.sax.saxutils import escape as xml_escape
 
-from pipeline.formats.base import VisualFormat, COLORS, html_page_wrapper
+from pipeline.formats.base import VisualFormat, EXECUTIVE_COLORS, html_page_executive
 from pipeline.formats.validators import (
     check_list_length,
     check_max_depth,
@@ -18,37 +19,43 @@ from pipeline.formats.validators import (
 )
 
 TRANSFORM_SYSTEM = """\
-You are an expert at creating clear, hierarchical mind maps from structured data. \
-You organize ideas into a central theme with branches and sub-branches. \
-You are direct, precise, and use infinitive verbs. \
-You NEVER use metaphors, emojis, or decorative language — only clear, actionable concepts. \
-You strictly respect word limits. You produce clean JSON."""
+You are a senior Visual Thinking Designer specializing in executive radial mind maps. \
+You create minimalist, Apple-style concept maps with surgical precision. \
+Every node is 1-4 words maximum. You think in spatial hierarchy, not sentences. \
+You prioritize white space, symmetry, and visual clarity. \
+No decorative language. No emojis. No metaphors. Only crystal-clear concepts. \
+You produce clean JSON."""
 
 TRANSFORM_PROMPT = """\
-Transform this structural model into a hierarchical mind map.
+Transform this structural model into a minimalist radial mind map.
 
 STRUCTURAL MODEL:
 {structural_model}
 
+DESIGN PHILOSOPHY:
+- Think like a designer at Apple or McKinsey, not a programmer.
+- Clarity, order, and visual breathing space.
+- Every word must earn its place.
+
 STRICT RULES:
-- Central node = the thesis. Maximum 6 words.
-- 3 to 5 main branches (one per nuclear idea). NEVER more than 5.
-- Each branch title: maximum 8 words. Use infinitive verbs.
-- Each branch has EXACTLY 2 children (from the sub_ideas). Maximum 8 words each.
+- Central node = the thesis. MAXIMUM 4 words. One powerful concept.
+- 4 to 5 main branches (one per nuclear idea). NEVER more than 5.
+- Each branch title: MAXIMUM 4 words. Concept fragments, not sentences.
+- Each branch has EXACTLY 2 children (from sub_ideas). MAXIMUM 4 words each.
 - Maximum depth: 2 levels (branches + children). No grandchildren.
-- No metaphors. No emojis. No decorative language.
-- No long phrases. If a concept exceeds the word limit, rewrite it shorter.
+- No emojis. No metaphors. No decorative language.
+- Use infinitive verbs or noun phrases only.
 
 Return ONLY valid JSON:
 {{
   "type": "mindmap",
-  "central_node": "Thesis (max 6 words)",
+  "central_node": "Core Concept (1-4 words)",
   "branches": [
     {{
-      "title": "Branch title (max 8 words)",
+      "title": "Branch (1-4 words)",
       "children": [
-        {{"title": "Sub-idea (max 8 words)", "children": []}},
-        {{"title": "Sub-idea (max 8 words)", "children": []}}
+        {{"title": "Detail (1-4 words)", "children": []}},
+        {{"title": "Detail (1-4 words)", "children": []}}
       ]
     }}
   ]
@@ -57,35 +64,10 @@ Return ONLY valid JSON:
 # Legacy prompts kept for backward compatibility
 SYSTEM_PROMPT = TRANSFORM_SYSTEM
 EXTRACTION_PROMPT = """\
-Turn this transcript into a hierarchical mind map.
-
-Extract:
-- A central node (the main topic, max 6 words)
-- 3-5 main branches, each with:
-  - A title (max 8 words, use infinitive verbs)
-  - 2 children sub-ideas, each with:
-    - A title (max 8 words)
-
-Style guide:
-- Be direct and structured, like a textbook outline
-- Use infinitive verbs
-- No metaphors, no emojis, no decorative language
-- Each node should be a clear, standalone concept
-
-Return ONLY valid JSON matching this exact schema (no other text):
-{{
-  "type": "mindmap",
-  "central_node": "Main Topic",
-  "branches": [
-    {{
-      "title": "Branch title",
-      "children": [
-        {{"title": "Sub-idea", "children": []}},
-        {{"title": "Sub-idea", "children": []}}
-      ]
-    }}
-  ]
-}}
+Turn this transcript into a minimalist radial mind map.
+Central node (max 4 words), 3-5 branches (max 4 words each),
+2 children per branch (max 4 words each). No emojis, no metaphors.
+Return ONLY valid JSON.
 
 TRANSCRIPT:
 {transcript}"""
@@ -108,12 +90,12 @@ class MindmapFormat(VisualFormat):
         if w:
             warnings.append(w)
 
-        w = check_word_count(data.get("central_node", ""), 6, "central_node")
+        w = check_word_count(data.get("central_node", ""), 4, "central_node")
         if w:
             warnings.append(w)
 
         for branch in branches:
-            w = check_word_count(branch.get("title", ""), 8, f"branch '{branch.get('title', '?')}'")
+            w = check_word_count(branch.get("title", ""), 4, f"branch '{branch.get('title', '?')}'")
             if w:
                 warnings.append(w)
             children = branch.get("children", [])
@@ -121,7 +103,7 @@ class MindmapFormat(VisualFormat):
             if w:
                 warnings.append(w)
             for child in children:
-                w = check_word_count(child.get("title", ""), 8, f"child '{child.get('title', '?')}'")
+                w = check_word_count(child.get("title", ""), 4, f"child '{child.get('title', '?')}'")
                 if w:
                     warnings.append(w)
                 w = check_max_depth(child, 2)
@@ -149,121 +131,142 @@ class MindmapFormat(VisualFormat):
             lines.append(f"{indent}- {child['title']}")
             MindmapFormat._md_children(child.get("children", []), lines, depth + 1)
 
-    # -- HTML / SVG (radial layout) ------------------------------------------
+    # -- HTML / SVG (executive radial layout) --------------------------------
 
     def generate_html(self, data: dict) -> str:
         central = xml_escape(data.get("central_node", "Mind Map"))
         branches = data.get("branches", [])
 
-        cx, cy = 500, 350
-        svg_h = 700
+        W, H = 1200, 800
+        CX, CY = W // 2, H // 2
 
         parts = []
-        # Background
-        parts.append(f'<rect width="1000" height="{svg_h}" fill="#FFFEF9" rx="8"/>')
 
-        # Collect all elements (lines first, then nodes on top)
+        # Pure white background
+        parts.append(f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>')
+
+        # Subtle dot grid for depth (very faint)
+        for gx in range(0, W, 40):
+            for gy in range(0, H, 40):
+                parts.append(
+                    f'<circle cx="{gx}" cy="{gy}" r="0.5" fill="#E8E8E8"/>'
+                )
+
         line_parts = []
         node_parts = []
 
-        n = len(branches)
-        if n == 0:
-            n = 1  # avoid division by zero
+        n = max(len(branches), 1)
+        branch_radius = 250
 
         for i, branch in enumerate(branches):
-            angle = (2 * math.pi * i / n) - math.pi / 2  # start from top
-            color = COLORS[i % len(COLORS)]
-            branch_r = 220
+            angle = (2 * math.pi * i / n) - math.pi / 2
+            color = EXECUTIVE_COLORS[i % len(EXECUTIVE_COLORS)]
+            color_light = self._lighten_color(color, 0.85)
 
-            bx = cx + branch_r * math.cos(angle)
-            by = cy + branch_r * math.sin(angle)
+            bx = CX + branch_radius * math.cos(angle)
+            by = CY + branch_radius * math.sin(angle)
 
-            # Curved line from center to branch
-            ctrl_x = cx + (branch_r * 0.5) * math.cos(angle)
-            ctrl_y = cy + (branch_r * 0.5) * math.sin(angle)
+            # Smooth bezier curve from center to branch
+            # Control point offset perpendicular for organic feel
+            perp_angle = angle + math.pi / 2
+            ctrl_offset = 20 * (1 if i % 2 == 0 else -1)
+            ctrl_r = branch_radius * 0.55
+            ctrl_x = CX + ctrl_r * math.cos(angle) + ctrl_offset * math.cos(perp_angle)
+            ctrl_y = CY + ctrl_r * math.sin(angle) + ctrl_offset * math.sin(perp_angle)
+
             line_parts.append(
-                f'<path d="M {cx} {cy} Q {ctrl_x} {ctrl_y} {bx:.0f} {by:.0f}" '
-                f'stroke="{color}" stroke-width="2.5" fill="none" filter="url(#sketchy)" opacity="0.7"/>'
+                f'<path d="M {CX} {CY} Q {ctrl_x:.0f} {ctrl_y:.0f} {bx:.0f} {by:.0f}" '
+                f'stroke="{color}" stroke-width="2.5" fill="none" opacity="0.6" '
+                f'stroke-linecap="round"/>'
             )
 
-            # Branch node
+            # Branch node — soft circle with text
             title = xml_escape(branch.get("title", ""))
-            if len(title) > 30:
-                title = title[:27] + "..."
-            node_parts.append(self._svg_node(bx, by, title, color, is_branch=True))
+            node_parts.append(self._svg_branch_node(bx, by, title, color, color_light))
 
-            # Children
+            # Children — fine secondary branches
             children = branch.get("children", [])
             nc = len(children)
             if nc > 0:
-                spread = min(math.pi / (n * 0.7), math.pi / 3)
-                child_angles = [
-                    angle + spread * (j - (nc - 1) / 2) / max(nc - 1, 1)
-                    for j in range(nc)
-                ]
-                child_r = 120
-
+                child_radius = 120
+                spread = math.pi / (n * 1.0)
                 for j, child in enumerate(children):
-                    ca = child_angles[j]
-                    child_x = bx + child_r * math.cos(ca)
-                    child_y = by + child_r * math.sin(ca)
+                    offset = spread * (j - (nc - 1) / 2) / max(nc - 1, 1)
+                    ca = angle + offset
+                    cx_child = bx + child_radius * math.cos(ca)
+                    cy_child = by + child_radius * math.sin(ca)
 
-                    # Line from branch to child
+                    # Fine connection line
                     line_parts.append(
-                        f'<line x1="{bx:.0f}" y1="{by:.0f}" x2="{child_x:.0f}" y2="{child_y:.0f}" '
-                        f'stroke="{color}" stroke-width="1.5" opacity="0.5" filter="url(#sketchy)"/>'
+                        f'<line x1="{bx:.0f}" y1="{by:.0f}" '
+                        f'x2="{cx_child:.0f}" y2="{cy_child:.0f}" '
+                        f'stroke="{color}" stroke-width="1" opacity="0.35" '
+                        f'stroke-linecap="round"/>'
                     )
 
                     child_title = xml_escape(child.get("title", ""))
-                    if len(child_title) > 28:
-                        child_title = child_title[:25] + "..."
-                    node_parts.append(self._svg_node(child_x, child_y, child_title, color, is_branch=False))
+                    node_parts.append(
+                        self._svg_leaf_node(cx_child, cy_child, child_title, color)
+                    )
 
-        # Central node (drawn on top of everything)
-        central_node = (
-            f'<rect x="{cx - 90}" y="{cy - 28}" width="180" height="56" rx="28" ry="28" '
-            f'fill="#16213e" stroke="#e94560" stroke-width="2.5" filter="url(#sketchy)"/>\n'
-            f'    <text x="{cx}" y="{cy + 6}" font-family="\'Caveat\', \'Segoe Print\', cursive" '
-            f'font-size="22" font-weight="bold" fill="#FFFEF9" text-anchor="middle" '
-            f'dominant-baseline="middle">{central}</text>'
+        # Central node — large, dominant circle
+        central_r = 58
+        node_parts.append(
+            f'<circle cx="{CX}" cy="{CY}" r="{central_r}" '
+            f'fill="#1A1A2E" stroke="none"/>\n'
+            f'    <text x="{CX}" y="{CY + 2}" '
+            f'font-family="\'Inter\', -apple-system, sans-serif" '
+            f'font-size="17" font-weight="600" fill="#FFFFFF" '
+            f'text-anchor="middle" dominant-baseline="middle" '
+            f'letter-spacing="0.5">{central}</text>'
         )
 
-        all_lines = "\n    ".join(line_parts)
-        all_nodes = "\n    ".join(node_parts)
+        lines_svg = "\n    ".join(line_parts)
+        nodes_svg = "\n    ".join(node_parts)
 
         svg_body = f"""
     {parts[0]}
 
-    <!-- Connection lines -->
-    {all_lines}
+    <!-- Connections -->
+    {lines_svg}
 
-    <!-- Branch and leaf nodes -->
-    {all_nodes}
+    <!-- Nodes -->
+    {nodes_svg}"""
 
-    <!-- Central node -->
-    {central_node}"""
-
-        return html_page_wrapper(data.get("central_node", "Mind Map"), svg_body, svg_h)
+        return html_page_executive(data.get("central_node", "Mind Map"), svg_body, W, H)
 
     @staticmethod
-    def _svg_node(x: float, y: float, text: str, color: str, is_branch: bool) -> str:
-        """Render a single node (branch or leaf) as SVG."""
-        if is_branch:
-            w, h = 160, 40
-            rx = 12
-            return (
-                f'<rect x="{x - w/2:.0f}" y="{y - h/2:.0f}" width="{w}" height="{h}" '
-                f'rx="{rx}" ry="{rx}" fill="white" stroke="{color}" stroke-width="2" '
-                f'filter="url(#sketchy)"/>\n'
-                f'    <text x="{x:.0f}" y="{y + 5:.0f}" '
-                f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
-                f'font-size="15" font-weight="bold" fill="{color}" text-anchor="middle" '
-                f'dominant-baseline="middle">{text}</text>'
-            )
-        else:
-            return (
-                f'<text x="{x:.0f}" y="{y:.0f}" '
-                f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
-                f'font-size="13" fill="#444" text-anchor="middle" '
-                f'dominant-baseline="middle">{text}</text>'
-            )
+    def _svg_branch_node(x: float, y: float, text: str, color: str, color_light: str) -> str:
+        """Render a branch node as a soft circle with text."""
+        r = 42
+        return (
+            f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{r}" '
+            f'fill="{color_light}" stroke="{color}" stroke-width="1.5"/>\n'
+            f'    <text x="{x:.0f}" y="{y + 1:.0f}" '
+            f'font-family="\'Inter\', -apple-system, sans-serif" '
+            f'font-size="13" font-weight="600" fill="{color}" '
+            f'text-anchor="middle" dominant-baseline="middle">{text}</text>'
+        )
+
+    @staticmethod
+    def _svg_leaf_node(x: float, y: float, text: str, color: str) -> str:
+        """Render a leaf node as subtle text with a small dot."""
+        return (
+            f'<circle cx="{x:.0f}" cy="{y:.0f}" r="3" fill="{color}" opacity="0.4"/>\n'
+            f'    <text x="{x:.0f}" y="{y + 16:.0f}" '
+            f'font-family="\'Inter\', -apple-system, sans-serif" '
+            f'font-size="11" font-weight="400" fill="#666" '
+            f'text-anchor="middle" dominant-baseline="middle">{text}</text>'
+        )
+
+    @staticmethod
+    def _lighten_color(hex_color: str, factor: float) -> str:
+        """Lighten a hex color toward white by the given factor (0-1)."""
+        hex_color = hex_color.lstrip("#")
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        r = int(r + (255 - r) * factor)
+        g = int(g + (255 - g) * factor)
+        b = int(b + (255 - b) * factor)
+        return f"#{r:02x}{g:02x}{b:02x}"

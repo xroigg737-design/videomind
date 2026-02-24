@@ -1,88 +1,76 @@
-"""Infografia visual format — 3-panel narrative layout.
+"""Infografia visual format — Executive Strategic Infographic.
 
-Generates an infographic with Problem / Method / Result structure
-in a vertical 16:9 layout.
+BCG/McKinsey consulting aesthetic: vertical 4:5 layout, 3-5 sections,
+each answering What/Why/Impact, clean sans-serif typography,
+soft muted colors, lots of white space.
 
 Phase 3 transform: receives a structural model and produces an infografia JSON.
 """
 
 from xml.sax.saxutils import escape as xml_escape
 
-from pipeline.formats.base import VisualFormat, html_page_wrapper
+from pipeline.formats.base import VisualFormat, INFOGRAFIA_COLORS, html_page_executive
 from pipeline.formats.validators import (
-    check_exact_count,
+    check_list_length,
     check_word_count,
 )
 
 TRANSFORM_SYSTEM = """\
-You are an expert infographic designer. You transform structured data into \
-clear, visually compelling 3-panel infographics. You write punchy headlines, \
-short bullet points, and memorable closing phrases. You are oriented toward \
-communication and impact, not academic depth. \
-You strictly respect word limits. You produce clean JSON."""
+You are a senior Visual Thinking Designer at a top consulting firm (McKinsey/BCG). \
+You create executive infographics that are clean, professional, and impactful. \
+Every word must earn its place. You think in strategic frameworks, not paragraphs. \
+Short, crisp, scannable. You produce clean JSON."""
 
 TRANSFORM_PROMPT = """\
-Transform this structural model into a 3-panel infographic.
+Transform this structural model into an executive strategic infographic.
 
 STRUCTURAL MODEL:
 {structural_model}
 
+DESIGN PHILOSOPHY:
+- Think like a McKinsey consultant presenting to a C-suite.
+- Professional, clean, solid. No decoration, no fluff.
+- Each section answers: What? Why it matters? Impact?
+- Maximum clarity with minimum words.
+
 STRICT RULES:
-- Headline: maximum 8 words, attention-grabbing like a magazine cover.
-- Exactly 3 sections:
-  1. "Problema" — the challenge or question (mapped from problem/thesis/concept in the model)
-  2. "Mètode" — the approach or method (mapped from method/argument/component)
-  3. "Resultat" — the outcome or insight (mapped from result/conclusion/consequence)
+- Headline: MAXIMUM 4 words. Executive-level, not academic.
+- 3 to 5 sections (one per nuclear idea). NEVER more than 5.
 - Each section has:
-  - title: exactly "Problema", "Mètode", or "Resultat"
-  - icon: one expressive emoji
-  - bullets: 2-4 short bullets. MAXIMUM 10 words each.
-- Closing phrase: maximum 12 words, memorable and quotable.
-- Bullets should be crisp and scannable, not narrative.
-- Oriented toward communication, not study.
+  - title: 1-3 words. The concept name.
+  - icon: one clean emoji (professional: 📊 🎯 ⚡ 🔑 🏗️ 📈 🔍 💎 🛡️ ⚖️)
+  - what: What is this? MAXIMUM 4 words.
+  - why: Why does it matter? MAXIMUM 4 words.
+  - impact: What's the impact? MAXIMUM 4 words.
+- Closing phrase: MAXIMUM 6 words. Memorable executive takeaway.
+- Use noun phrases and active fragments, not full sentences.
+- No filler words. Every word must punch.
 
 Return ONLY valid JSON:
 {{
   "type": "infografia",
-  "headline": "Attention-grabbing headline (max 8 words)",
+  "headline": "Executive Title (1-4 words)",
   "sections": [
     {{
-      "title": "Problema",
+      "title": "Concept (1-3 words)",
       "icon": "emoji",
-      "bullets": ["Short point (max 10 words)", "Short point"]
-    }},
-    {{
-      "title": "Mètode",
-      "icon": "emoji",
-      "bullets": ["Short point (max 10 words)", "Short point"]
-    }},
-    {{
-      "title": "Resultat",
-      "icon": "emoji",
-      "bullets": ["Short point (max 10 words)", "Short point"]
+      "what": "Definition (1-4 words)",
+      "why": "Importance (1-4 words)",
+      "impact": "Result (1-4 words)"
     }}
   ],
-  "closing_phrase": "Memorable final takeaway (max 12 words)"
+  "closing_phrase": "Takeaway (max 6 words)"
 }}"""
 
 # Legacy prompts kept for backward compatibility
 SYSTEM_PROMPT = TRANSFORM_SYSTEM
 EXTRACTION_PROMPT = """\
-Turn this transcript into a 3-panel infographic.
-
-Extract headline, 3 sections (Problema/Mètode/Resultat), closing phrase.
-Return ONLY valid JSON.
+Turn this transcript into an executive infographic.
+Headline (max 4 words), 3-5 sections with title/what/why/impact (max 4 words each),
+closing phrase (max 6 words). Return ONLY valid JSON.
 
 TRANSCRIPT:
 {transcript}"""
-
-# Panel accent colors
-PANEL_COLORS = {
-    "Problema": "#E74C3C",
-    "Mètode": "#3498DB",
-    "Resultat": "#2ECC71",
-}
-EXPECTED_TITLES = {"Problema", "Mètode", "Resultat"}
 
 
 class InfografiaFormat(VisualFormat):
@@ -99,27 +87,28 @@ class InfografiaFormat(VisualFormat):
         warnings = []
 
         sections = data.get("sections", [])
-        w = check_exact_count(sections, 3, "sections")
+        w = check_list_length(sections, 3, 5, "sections")
         if w:
             warnings.append(w)
 
-        w = check_word_count(data.get("headline", ""), 8, "headline")
+        w = check_word_count(data.get("headline", ""), 4, "headline")
         if w:
             warnings.append(w)
 
-        w = check_word_count(data.get("closing_phrase", ""), 12, "closing_phrase")
+        w = check_word_count(data.get("closing_phrase", ""), 6, "closing_phrase")
         if w:
             warnings.append(w)
-
-        titles = {s.get("title") for s in sections}
-        if titles != EXPECTED_TITLES:
-            warnings.append(f"Section titles should be {EXPECTED_TITLES}, got {titles}")
 
         for sec in sections:
-            for bullet in sec.get("bullets", []):
-                w = check_word_count(bullet, 10, f"bullet in '{sec.get('title', '?')}'")
-                if w:
-                    warnings.append(w)
+            w = check_word_count(sec.get("title", ""), 3, f"title '{sec.get('title', '?')}'")
+            if w:
+                warnings.append(w)
+            for field in ("what", "why", "impact"):
+                val = sec.get(field, "")
+                if val:
+                    w = check_word_count(val, 4, f"{field} in '{sec.get('title', '?')}'")
+                    if w:
+                        warnings.append(w)
 
         return warnings
 
@@ -132,8 +121,15 @@ class InfografiaFormat(VisualFormat):
             icon = section.get("icon", "")
             title = section.get("title", "")
             lines.append(f"## {icon} {title}\n")
-            for bullet in section.get("bullets", []):
-                lines.append(f"- {bullet}")
+            what = section.get("what", "")
+            why = section.get("why", "")
+            impact = section.get("impact", "")
+            if what:
+                lines.append(f"- **What:** {what}")
+            if why:
+                lines.append(f"- **Why:** {why}")
+            if impact:
+                lines.append(f"- **Impact:** {impact}")
             lines.append("")
 
         lines.append("---\n")
@@ -143,88 +139,127 @@ class InfografiaFormat(VisualFormat):
 
         return "\n".join(lines) + "\n"
 
-    # -- HTML / SVG (16:9 vertical panels) -----------------------------------
+    # -- HTML / SVG (executive vertical layout) ------------------------------
 
     def generate_html(self, data: dict) -> str:
         headline = xml_escape(data.get("headline", "Infografia"))
         sections = data.get("sections", [])
         closing = xml_escape(data.get("closing_phrase", ""))
 
-        canvas_w, canvas_h = 1000, 563  # 16:9
+        canvas_w, canvas_h = 800, 1000  # 4:5 aspect
+        margin_x = 80
+        content_w = canvas_w - 2 * margin_x
+
         parts = []
 
-        # Background
-        parts.append(f'<rect width="{canvas_w}" height="{canvas_h}" fill="#FFFEF9" rx="8"/>')
+        # Pure white background
+        parts.append(f'<rect width="{canvas_w}" height="{canvas_h}" fill="#FFFFFF"/>')
 
-        # Headline
+        # Headline — large, bold, dark
         parts.append(
-            f'<text x="{canvas_w // 2}" y="50" '
-            f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
-            f'font-size="32" font-weight="bold" fill="#16213e" text-anchor="middle" '
-            f'filter="url(#sketchy)">{headline}</text>'
-        )
-        parts.append(
-            f'<line x1="200" y1="62" x2="800" y2="62" stroke="#e94560" stroke-width="2" '
-            f'stroke-dasharray="8,4" opacity="0.5" filter="url(#sketchy)"/>'
+            f'<text x="{canvas_w // 2}" y="90" '
+            f'font-family="\'Inter\', -apple-system, sans-serif" '
+            f'font-size="36" font-weight="700" fill="#1A1A2E" '
+            f'text-anchor="middle" letter-spacing="-0.5">{headline}</text>'
         )
 
-        # 3 panels
-        panel_top = 80
-        panel_h = 130
-        panel_gap = 15
-        panel_margin_x = 60
+        # Subtle separator line
+        parts.append(
+            f'<line x1="{margin_x}" y1="110" x2="{canvas_w - margin_x}" y2="110" '
+            f'stroke="#E0E0E0" stroke-width="1"/>'
+        )
+
+        # Sections
+        n = len(sections)
+        section_start_y = 145
+        available_h = canvas_h - section_start_y - 100  # room for closing
+        section_h = min(150, (available_h - (n - 1) * 20) // max(n, 1))
+        section_gap = 20
 
         for i, section in enumerate(sections):
-            py = panel_top + i * (panel_h + panel_gap)
-            title = section.get("title", "")
+            sy = section_start_y + i * (section_h + section_gap)
+            color = INFOGRAFIA_COLORS[i % len(INFOGRAFIA_COLORS)]
+            color_light = self._lighten_color(color, 0.92)
+
+            title = xml_escape(section.get("title", ""))
             icon = xml_escape(section.get("icon", ""))
-            color = PANEL_COLORS.get(title, "#888")
-            escaped_title = xml_escape(title)
-            bullets = section.get("bullets", [])
+            what = xml_escape(section.get("what", ""))
+            why = xml_escape(section.get("why", ""))
+            impact = xml_escape(section.get("impact", ""))
 
-            # Panel background
+            # Section background — very subtle
             parts.append(
-                f'<rect x="{panel_margin_x}" y="{py}" width="{canvas_w - 2 * panel_margin_x}" '
-                f'height="{panel_h}" rx="8" ry="8" fill="white" stroke="#ddd" stroke-width="1" '
-                f'filter="url(#sketchy)"/>'
+                f'<rect x="{margin_x}" y="{sy}" width="{content_w}" '
+                f'height="{section_h}" rx="6" fill="{color_light}"/>'
             )
 
-            # Accent bar
+            # Left accent bar
             parts.append(
-                f'<rect x="{panel_margin_x}" y="{py}" width="6" height="{panel_h}" '
-                f'rx="3" fill="{color}"/>'
+                f'<rect x="{margin_x}" y="{sy}" width="4" height="{section_h}" '
+                f'rx="2" fill="{color}"/>'
             )
 
-            # Icon + Title
+            # Icon
             parts.append(
-                f'<text x="{panel_margin_x + 24}" y="{py + 28}" '
-                f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
-                f'font-size="22" font-weight="bold" fill="{color}">'
-                f'{icon} {escaped_title}</text>'
+                f'<text x="{margin_x + 24}" y="{sy + 32}" '
+                f'font-size="24">{icon}</text>'
             )
 
-            # Bullets
-            bullet_y = py + 52
-            for bullet in bullets[:4]:
-                escaped_bullet = xml_escape(bullet)
-                if len(escaped_bullet) > 70:
-                    escaped_bullet = escaped_bullet[:67] + "..."
-                parts.append(
-                    f'<text x="{panel_margin_x + 28}" y="{bullet_y}" '
-                    f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
-                    f'font-size="14" fill="#444">'
-                    f'\u2022 {escaped_bullet}</text>'
-                )
-                bullet_y += 22
+            # Section title
+            parts.append(
+                f'<text x="{margin_x + 56}" y="{sy + 32}" '
+                f'font-family="\'Inter\', -apple-system, sans-serif" '
+                f'font-size="18" font-weight="600" fill="{color}">'
+                f'{title}</text>'
+            )
 
-        # Closing phrase
+            # What / Why / Impact — three clean lines
+            label_x = margin_x + 28
+            value_x = margin_x + 100
+            line_y = sy + 60
+
+            for label, value in [("What", what), ("Why", why), ("Impact", impact)]:
+                if value:
+                    parts.append(
+                        f'<text x="{label_x}" y="{line_y}" '
+                        f'font-family="\'Inter\', -apple-system, sans-serif" '
+                        f'font-size="11" font-weight="600" fill="#999" '
+                        f'letter-spacing="0.5">{label.upper()}</text>'
+                    )
+                    parts.append(
+                        f'<text x="{value_x}" y="{line_y}" '
+                        f'font-family="\'Inter\', -apple-system, sans-serif" '
+                        f'font-size="13" font-weight="400" fill="#444">'
+                        f'{value}</text>'
+                    )
+                    line_y += 24
+
+        # Closing phrase — subtle, centered
         if closing:
             parts.append(
-                f'<text x="{canvas_w // 2}" y="{canvas_h - 25}" '
-                f'font-family="\'Caveat\', \'Segoe Print\', cursive" '
-                f'font-size="18" fill="#555" text-anchor="middle" font-style="italic" '
-                f'filter="url(#sketchy)">{closing}</text>'
+                f'<line x1="{canvas_w // 2 - 60}" y1="{canvas_h - 70}" '
+                f'x2="{canvas_w // 2 + 60}" y2="{canvas_h - 70}" '
+                f'stroke="#E0E0E0" stroke-width="1"/>'
+            )
+            parts.append(
+                f'<text x="{canvas_w // 2}" y="{canvas_h - 40}" '
+                f'font-family="\'Inter\', -apple-system, sans-serif" '
+                f'font-size="15" font-weight="500" fill="#888" '
+                f'text-anchor="middle" font-style="italic" '
+                f'letter-spacing="0.3">{closing}</text>'
             )
 
         svg_body = "\n    ".join(parts)
-        return html_page_wrapper(data.get("headline", "Infografia"), svg_body, canvas_h)
+        return html_page_executive(data.get("headline", "Infografia"), svg_body, canvas_w, canvas_h)
+
+    @staticmethod
+    def _lighten_color(hex_color: str, factor: float) -> str:
+        """Lighten a hex color toward white by the given factor (0-1)."""
+        hex_color = hex_color.lstrip("#")
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        r = int(r + (255 - r) * factor)
+        g = int(g + (255 - g) * factor)
+        b = int(b + (255 - b) * factor)
+        return f"#{r:02x}{g:02x}{b:02x}"

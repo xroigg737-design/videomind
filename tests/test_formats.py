@@ -15,27 +15,39 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # ---------------------------------------------------------------------------
 
 SAMPLE_SKETCHNOTE_DATA = {
-    "title": "Neural Networks",
+    "title": "NEURAL NETS",
     "sections": [
         {
             "id": "s1",
-            "heading": "Architecture",
+            "heading": "ARCHITECTURE",
             "icon": "\U0001f3d7\ufe0f",
-            "metaphor": "building with LEGO bricks",
-            "points": ["Layers organize neurons", "Deep vs shallow networks"],
+            "points": ["Organize neurons", "Deep networks"],
             "color": "#4A90D9",
         },
         {
             "id": "s2",
-            "heading": "Training",
+            "heading": "TRAINING",
             "icon": "\U0001f3cb\ufe0f",
-            "metaphor": "training a muscle",
-            "points": ["Backpropagation", "Gradient descent optimization"],
+            "points": ["Backpropagation", "Gradient descent"],
             "color": "#E67E22",
+        },
+        {
+            "id": "s3",
+            "heading": "DATA FLOW",
+            "icon": "\U0001f4ca",
+            "points": ["Forward pass", "Loss computation"],
+            "color": "#2ECC71",
+        },
+        {
+            "id": "s4",
+            "heading": "DEPLOY",
+            "icon": "\U0001f680",
+            "points": ["Scale models", "Monitor drift"],
+            "color": "#9B59B6",
         },
     ],
     "connections": [
-        {"from": "s1", "to": "s2", "label": "feeds into"},
+        {"from": "s1", "to": "s2", "label": "feeds"},
     ],
 }
 
@@ -82,43 +94,49 @@ SAMPLE_INFOGRAFIA_DATA = {
         {
             "title": "Problema",
             "icon": "\u26a0\ufe0f",
-            "bullets": ["Students lack personalized attention", "One-size-fits-all approach"],
+            "what": "No personalization",
+            "why": "Students fall behind",
+            "impact": "High dropout rates",
         },
         {
             "title": "M\u00e8tode",
             "icon": "\U0001f9ea",
-            "bullets": ["Adaptive algorithms tailor content", "Real-time feedback loops"],
+            "what": "Adaptive algorithms",
+            "why": "Real-time feedback",
+            "impact": "Tailored learning paths",
         },
         {
             "title": "Resultat",
             "icon": "\U0001f3af",
-            "bullets": ["Improved retention rates", "Higher student engagement"],
+            "what": "Better retention",
+            "why": "Engaged students",
+            "impact": "Higher completion rates",
         },
     ],
-    "closing_phrase": "Every learner deserves a unique path",
+    "closing_phrase": "Every learner unique",
 }
 
 SAMPLE_CORE_STRUCTURE = {
-    "thesis": "Neural networks transform data processing",
+    "thesis": "Neural network revolution",
     "content_type": "explanatory",
     "nuclear_ideas": [
         {
-            "idea": "Architecture defines network capacity",
-            "sub_ideas": ["Layers organize neurons", "Depth adds abstraction"],
+            "idea": "Architecture design",
+            "sub_ideas": ["Layer organization", "Depth abstraction"],
             "structural_role": "concept",
         },
         {
-            "idea": "Training optimizes network weights",
-            "sub_ideas": ["Backpropagation computes gradients", "Loss function guides learning"],
+            "idea": "Training optimization",
+            "sub_ideas": ["Backpropagation gradients", "Loss-guided learning"],
             "structural_role": "component",
         },
         {
-            "idea": "Applications span many domains",
-            "sub_ideas": ["Vision and language tasks", "Healthcare and robotics"],
+            "idea": "Cross-domain applications",
+            "sub_ideas": ["Vision language", "Healthcare robotics"],
             "structural_role": "consequence",
         },
     ],
-    "memorable_phrase": "Data is the new oil",
+    "memorable_phrase": "Data fuels intelligence",
 }
 
 
@@ -235,6 +253,7 @@ class TestCollectAllViolations:
     def test_infografia_valid(self):
         from pipeline.formats.validators import collect_all_violations
 
+        # headline "AI Transforms Education" is 3 words, within 4-word limit
         assert collect_all_violations(SAMPLE_INFOGRAFIA_DATA, "infografia") == []
 
 
@@ -356,22 +375,22 @@ class TestSketchnoteMarkdown:
 
         fmt = SketchnoteFormat()
         md = fmt.generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert md.startswith("# Neural Networks\n")
+        assert md.startswith("# NEURAL NETS\n")
 
     def test_contains_section_headings(self):
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
         md = fmt.generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "Architecture" in md
-        assert "Training" in md
+        assert "ARCHITECTURE" in md
+        assert "TRAINING" in md
 
     def test_contains_bullets(self):
         from pipeline.formats.sketchnote import SketchnoteFormat
 
         fmt = SketchnoteFormat()
         md = fmt.generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "- Layers organize neurons" in md
+        assert "- Organize neurons" in md
 
 
 class TestSketchnoteHtml:
@@ -388,7 +407,7 @@ class TestSketchnoteHtml:
 
         fmt = SketchnoteFormat()
         html = fmt.generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "Neural Networks" in html
+        assert "NEURAL NETS" in html
 
     def test_contains_sketchy_filter(self):
         from pipeline.formats.sketchnote import SketchnoteFormat
@@ -402,7 +421,7 @@ class TestSketchnoteHtml:
 
         fmt = SketchnoteFormat()
         html = fmt.generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "feeds into" in html
+        assert "feeds" in html
 
 
 class TestSketchnoteValidation:
@@ -488,13 +507,13 @@ class TestMindmapHtml:
         html = fmt.generate_html(SAMPLE_MINDMAP_DATA)
         assert "Supervised Learning" in html
 
-    def test_contains_sketchy_filter(self):
+    def test_contains_executive_style(self):
         from pipeline.formats.mindmap_format import MindmapFormat
 
         fmt = MindmapFormat()
         html = fmt.generate_html(SAMPLE_MINDMAP_DATA)
-        assert "feTurbulence" in html
-        assert "Caveat" in html
+        assert "Inter" in html
+        assert "#FFFFFF" in html
 
 
 class TestMindmapValidation:
@@ -571,14 +590,16 @@ class TestInfografiaMarkdown:
 
         fmt = InfografiaFormat()
         md = fmt.generate_markdown(SAMPLE_INFOGRAFIA_DATA)
-        assert "Every learner deserves a unique path" in md
+        assert "Every learner unique" in md
 
-    def test_contains_bullets(self):
+    def test_contains_what_why_impact(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
         md = fmt.generate_markdown(SAMPLE_INFOGRAFIA_DATA)
-        assert "- Students lack personalized attention" in md
+        assert "No personalization" in md
+        assert "Students fall behind" in md
+        assert "High dropout rates" in md
 
 
 class TestInfografiaHtml:
@@ -597,28 +618,29 @@ class TestInfografiaHtml:
         html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
         assert "AI Transforms Education" in html
 
-    def test_contains_panel_colors(self):
+    def test_contains_section_colors(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
         html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
-        assert "#E74C3C" in html  # Problema
-        assert "#3498DB" in html  # Metode
-        assert "#2ECC71" in html  # Resultat
+        assert "#2D5BFF" in html  # First section
+        assert "#00B894" in html  # Second section
+        assert "#FDCB6E" in html  # Third section
 
     def test_contains_closing_phrase(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
         html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
-        assert "Every learner deserves a unique path" in html
+        assert "Every learner unique" in html
 
-    def test_contains_sketchy_filter(self):
+    def test_contains_executive_style(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
         html = fmt.generate_html(SAMPLE_INFOGRAFIA_DATA)
-        assert "feTurbulence" in html
+        assert "Inter" in html
+        assert "#FFFFFF" in html
 
 
 class TestInfografiaValidation:
@@ -635,40 +657,40 @@ class TestInfografiaValidation:
         data = {
             "headline": "Test",
             "sections": [
-                {"title": "Problema", "icon": "x", "bullets": ["a"]},
-                {"title": "M\u00e8tode", "icon": "x", "bullets": ["a"]},
+                {"title": "A", "icon": "x", "what": "a", "why": "b", "impact": "c"},
+                {"title": "B", "icon": "x", "what": "a", "why": "b", "impact": "c"},
             ],
             "closing_phrase": "Short",
         }
         warnings = fmt.validate(data)
         assert any("sections" in w for w in warnings)
 
-    def test_warns_wrong_titles(self):
+    def test_warns_long_section_title(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
         data = {
             "headline": "Test",
             "sections": [
-                {"title": "Problema", "icon": "x", "bullets": ["a"]},
-                {"title": "Approach", "icon": "x", "bullets": ["a"]},
-                {"title": "Resultat", "icon": "x", "bullets": ["a"]},
+                {"title": "This is way too long", "icon": "x", "what": "a", "why": "b", "impact": "c"},
+                {"title": "Short", "icon": "x", "what": "a", "why": "b", "impact": "c"},
+                {"title": "Ok", "icon": "x", "what": "a", "why": "b", "impact": "c"},
             ],
             "closing_phrase": "Short",
         }
         warnings = fmt.validate(data)
-        assert any("titles" in w.lower() for w in warnings)
+        assert any("title" in w.lower() for w in warnings)
 
     def test_warns_long_headline(self):
         from pipeline.formats.infografia import InfografiaFormat
 
         fmt = InfografiaFormat()
         data = {
-            "headline": "This is a very long headline that exceeds eight words limit",
+            "headline": "This is a very long headline exceeds limit",
             "sections": [
-                {"title": "Problema", "icon": "x", "bullets": ["a"]},
-                {"title": "M\u00e8tode", "icon": "x", "bullets": ["a"]},
-                {"title": "Resultat", "icon": "x", "bullets": ["a"]},
+                {"title": "A", "icon": "x", "what": "a", "why": "b", "impact": "c"},
+                {"title": "B", "icon": "x", "what": "a", "why": "b", "impact": "c"},
+                {"title": "C", "icon": "x", "what": "a", "why": "b", "impact": "c"},
             ],
             "closing_phrase": "Short",
         }
@@ -714,16 +736,26 @@ class TestBackwardCompat:
         mock_cls.return_value = mock_client
 
         result = _call_claude("some transcript")
-        assert result["title"] == "Neural Networks"
+        assert result["title"] == "NEURAL NETS"
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
     @patch("pipeline.formats.distiller.anthropic.Anthropic")
     def test_output_files_named_mindmap(self, mock_distiller_cls, mock_base_cls, tmp_path):
         from pipeline.mindmap import generate_mindmap
 
-        # Phase 1: distiller returns core structure
+        # Phase 1: distiller returns core structure (new 1-4 word format)
+        core_for_test = {
+            "thesis": "Neural revolution",
+            "content_type": "explanatory",
+            "nuclear_ideas": [
+                {"idea": "Architecture design", "sub_ideas": ["Layer org", "Depth"], "structural_role": "concept"},
+                {"idea": "Training optimization", "sub_ideas": ["Backprop", "Loss guide"], "structural_role": "component"},
+                {"idea": "Cross-domain use", "sub_ideas": ["Vision", "Healthcare"], "structural_role": "consequence"},
+            ],
+            "memorable_phrase": "Data fuels AI",
+        }
         distiller_response = MagicMock()
-        distiller_response.content = [MagicMock(text=json.dumps(SAMPLE_CORE_STRUCTURE))]
+        distiller_response.content = [MagicMock(text=json.dumps(core_for_test))]
         mock_distiller_client = MagicMock()
         mock_distiller_client.messages.create.return_value = distiller_response
         mock_distiller_cls.return_value = mock_distiller_client

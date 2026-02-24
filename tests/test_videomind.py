@@ -203,27 +203,39 @@ class TestTranscribeAudioCached:
 # ---------------------------------------------------------------------------
 
 SAMPLE_SKETCHNOTE_DATA = {
-    "title": "Neural Networks",
+    "title": "NEURAL NETS",
     "sections": [
         {
             "id": "s1",
-            "heading": "Architecture",
+            "heading": "ARCHITECTURE",
             "icon": "\U0001f3d7\ufe0f",
-            "metaphor": "building with LEGO bricks",
-            "points": ["Layers organize neurons", "Deep vs shallow networks"],
+            "points": ["Organize neurons", "Deep networks"],
             "color": "#4A90D9",
         },
         {
             "id": "s2",
-            "heading": "Training",
+            "heading": "TRAINING",
             "icon": "\U0001f3cb\ufe0f",
-            "metaphor": "training a muscle",
-            "points": ["Backpropagation", "Gradient descent optimization"],
+            "points": ["Backpropagation", "Gradient descent"],
             "color": "#E67E22",
+        },
+        {
+            "id": "s3",
+            "heading": "DATA FLOW",
+            "icon": "\U0001f4ca",
+            "points": ["Forward pass", "Loss computation"],
+            "color": "#2ECC71",
+        },
+        {
+            "id": "s4",
+            "heading": "DEPLOY",
+            "icon": "\U0001f680",
+            "points": ["Scale models", "Monitor drift"],
+            "color": "#9B59B6",
         },
     ],
     "connections": [
-        {"from": "s1", "to": "s2", "label": "feeds into"},
+        {"from": "s1", "to": "s2", "label": "feeds"},
     ],
 }
 
@@ -233,53 +245,34 @@ class TestGenerateMarkdown:
         from pipeline.mindmap import _generate_markdown
 
         md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert md.startswith("# Neural Networks\n")
+        assert md.startswith("# NEURAL NETS\n")
 
     def test_contains_section_headings_with_icons(self):
         from pipeline.mindmap import _generate_markdown
 
         md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "\U0001f3d7\ufe0f Architecture" in md
-        assert "\U0001f3cb\ufe0f Training" in md
+        assert "\U0001f3d7\ufe0f ARCHITECTURE" in md
+        assert "\U0001f3cb\ufe0f TRAINING" in md
 
     def test_contains_bullet_points(self):
         from pipeline.mindmap import _generate_markdown
 
         md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "- Layers organize neurons" in md
+        assert "- Organize neurons" in md
         assert "- Backpropagation" in md
 
     def test_contains_connections(self):
         from pipeline.mindmap import _generate_markdown
 
         md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "feeds into" in md
+        assert "feeds" in md
 
-    def test_metaphor_appears_as_blockquote(self):
+    def test_sections_have_points(self):
         from pipeline.mindmap import _generate_markdown
 
         md = _generate_markdown(SAMPLE_SKETCHNOTE_DATA)
-        assert "> *building with LEGO bricks*" in md
-        assert "> *training a muscle*" in md
-
-    def test_no_metaphor_blockquote_when_missing(self):
-        from pipeline.mindmap import _generate_markdown
-
-        data_no_metaphor = {
-            "title": "Test",
-            "sections": [
-                {
-                    "id": "s1",
-                    "heading": "Heading",
-                    "icon": "📌",
-                    "points": ["Point one"],
-                    "color": "#4A90D9",
-                }
-            ],
-            "connections": [],
-        }
-        md = _generate_markdown(data_no_metaphor)
-        assert "> *" not in md
+        assert "- Forward pass" in md
+        assert "- Scale models" in md
 
 
 # ---------------------------------------------------------------------------
@@ -292,7 +285,7 @@ class TestGenerateHtml:
         from pipeline.mindmap import _generate_html
 
         html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "Neural Networks" in html
+        assert "NEURAL NETS" in html
 
     def test_is_valid_html_structure(self):
         from pipeline.mindmap import _generate_html
@@ -312,8 +305,8 @@ class TestGenerateHtml:
         from pipeline.mindmap import _generate_html
 
         html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "Architecture" in html
-        assert "Training" in html
+        assert "ARCHITECTURE" in html
+        assert "TRAINING" in html
 
     def test_contains_sketchy_filter(self):
         from pipeline.mindmap import _generate_html
@@ -333,33 +326,14 @@ class TestGenerateHtml:
 
         html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
         assert "arrowhead" in html
-        assert "feeds into" in html
+        assert "feeds" in html
 
-    def test_metaphor_appears_italic_in_html(self):
+    def test_contains_thick_strokes(self):
         from pipeline.mindmap import _generate_html
 
         html = _generate_html(SAMPLE_SKETCHNOTE_DATA)
-        assert "font-style=\"italic\"" in html
-        assert "building with LEGO bricks" in html
-
-    def test_no_metaphor_italic_when_missing(self):
-        from pipeline.mindmap import _generate_html
-
-        data_no_metaphor = {
-            "title": "Test",
-            "sections": [
-                {
-                    "id": "s1",
-                    "heading": "Heading",
-                    "icon": "📌",
-                    "points": ["Point one"],
-                    "color": "#4A90D9",
-                }
-            ],
-            "connections": [],
-        }
-        html = _generate_html(data_no_metaphor)
-        assert "font-style=\"italic\"" not in html
+        assert 'stroke-width="3"' in html
+        assert "stroke=\"#222\"" in html
 
 
 # ---------------------------------------------------------------------------
@@ -379,8 +353,8 @@ class TestCallClaude:
         mock_anthropic_cls.return_value = mock_client
 
         result = _call_claude("some transcript")
-        assert result["title"] == "Neural Networks"
-        assert len(result["sections"]) == 2
+        assert result["title"] == "NEURAL NETS"
+        assert len(result["sections"]) == 4
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_handles_markdown_code_block_response(self, mock_anthropic_cls):
@@ -394,7 +368,7 @@ class TestCallClaude:
         mock_anthropic_cls.return_value = mock_client
 
         result = _call_claude("some transcript")
-        assert result["title"] == "Neural Networks"
+        assert result["title"] == "NEURAL NETS"
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_appends_language_instruction(self, mock_anthropic_cls):
@@ -501,7 +475,7 @@ class TestGenerateMindmap:
 
         with open(result["json_path"]) as f:
             data = json.load(f)
-        assert data["title"] == "Neural Networks"
+        assert data["title"] == "NEURAL NETS"
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_generates_md_only(self, mock_cls, tmp_path):
@@ -514,7 +488,7 @@ class TestGenerateMindmap:
 
         with open(result["md_path"]) as f:
             content = f.read()
-        assert "# Neural Networks" in content
+        assert "# NEURAL NETS" in content
 
     @patch("pipeline.formats.base.anthropic.Anthropic")
     def test_html_contains_svg(self, mock_cls, tmp_path):

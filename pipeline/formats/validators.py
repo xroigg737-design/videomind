@@ -45,7 +45,7 @@ def collect_all_violations(data: dict, format_type: str) -> list[str]:
 
     if format_type == "mindmap":
         central = data.get("central_node", "")
-        w = check_word_count(central, 6, "central_node")
+        w = check_word_count(central, 4, "central_node")
         if w:
             violations.append(w)
 
@@ -55,7 +55,7 @@ def collect_all_violations(data: dict, format_type: str) -> list[str]:
             violations.append(w)
 
         for branch in branches:
-            w = check_word_count(branch.get("title", ""), 8, f"branch '{branch.get('title', '?')}'")
+            w = check_word_count(branch.get("title", ""), 4, f"branch '{branch.get('title', '?')}'")
             if w:
                 violations.append(w)
             children = branch.get("children", [])
@@ -63,41 +63,50 @@ def collect_all_violations(data: dict, format_type: str) -> list[str]:
             if w:
                 violations.append(w)
             for child in children:
-                w = check_word_count(child.get("title", ""), 8, f"child '{child.get('title', '?')}'")
+                w = check_word_count(child.get("title", ""), 4, f"child '{child.get('title', '?')}'")
                 if w:
                     violations.append(w)
 
     elif format_type == "sketchnote":
+        w = check_word_count(data.get("title", ""), 3, "title")
+        if w:
+            violations.append(w)
+
         sections = data.get("sections", [])
-        w = check_list_length(sections, 4, 6, "sections")
+        w = check_list_length(sections, 4, 5, "sections")
         if w:
             violations.append(w)
         for sec in sections:
-            w = check_word_count(sec.get("heading", ""), 4, f"heading '{sec.get('heading', '?')}'")
+            w = check_word_count(sec.get("heading", ""), 3, f"heading '{sec.get('heading', '?')}'")
             if w:
                 violations.append(w)
             for pt in sec.get("points", []):
-                w = check_word_count(pt, 6, f"point in '{sec.get('heading', '?')}'")
+                w = check_word_count(pt, 4, f"point in '{sec.get('heading', '?')}'")
                 if w:
                     violations.append(w)
 
     elif format_type == "infografia":
-        w = check_word_count(data.get("headline", ""), 8, "headline")
+        w = check_word_count(data.get("headline", ""), 4, "headline")
         if w:
             violations.append(w)
 
         sections = data.get("sections", [])
-        w = check_exact_count(sections, 3, "sections")
+        w = check_list_length(sections, 3, 5, "sections")
         if w:
             violations.append(w)
 
         for sec in sections:
-            for bullet in sec.get("bullets", []):
-                w = check_word_count(bullet, 10, f"bullet in '{sec.get('title', '?')}'")
-                if w:
-                    violations.append(w)
+            w = check_word_count(sec.get("title", ""), 3, f"title '{sec.get('title', '?')}'")
+            if w:
+                violations.append(w)
+            for field in ("what", "why", "impact"):
+                val = sec.get(field, "")
+                if val:
+                    w = check_word_count(val, 4, f"{field} in '{sec.get('title', '?')}'")
+                    if w:
+                        violations.append(w)
 
-        w = check_word_count(data.get("closing_phrase", ""), 12, "closing_phrase")
+        w = check_word_count(data.get("closing_phrase", ""), 6, "closing_phrase")
         if w:
             violations.append(w)
 

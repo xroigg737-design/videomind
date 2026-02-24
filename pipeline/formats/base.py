@@ -22,8 +22,14 @@ MAX_TRANSCRIPT_LENGTH = 100_000
 # Maximum auto-retry attempts in Phase 4 before accepting best result
 MAX_PHASE4_RETRIES = 2
 
-# Shared color palette
+# Shared color palette (legacy / sketchnote)
 COLORS = ["#4A90D9", "#E67E22", "#2ECC71", "#9B59B6", "#E74C3C", "#1ABC9C", "#F39C12", "#3498DB"]
+
+# Executive palette — soft, muted, consulting-grade
+EXECUTIVE_COLORS = ["#5B8DEF", "#F2994A", "#6FCF97", "#BB6BD9", "#EB5757"]
+
+# Infografia section palette — corporate muted tones
+INFOGRAFIA_COLORS = ["#2D5BFF", "#00B894", "#FDCB6E", "#E17055", "#6C5CE7"]
 
 
 def _extract_json_from_response(response_text: str) -> dict:
@@ -119,6 +125,107 @@ def html_page_wrapper(title: str, svg_content: str, svg_h: int) -> str:
       </filter>
       <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
         <polygon points="0 0, 10 3.5, 0 7" fill="#888"/>
+      </marker>
+    </defs>
+    {svg_content}
+  </svg>
+</div>
+</body>
+</html>"""
+
+
+def html_page_executive(title: str, svg_content: str, svg_w: int, svg_h: int) -> str:
+    """Wrap SVG in a clean, minimalist executive-style HTML page (Apple/consulting aesthetic)."""
+    escaped_title = xml_escape(title)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{escaped_title} - VideoMind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  html, body {{ height: 100%; width: 100%; }}
+  body {{
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #FFFFFF;
+    color: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: auto;
+  }}
+  .container {{
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+    width: 100%;
+    max-width: 1400px;
+  }}
+  svg {{ max-width: 100%; height: auto; }}
+</style>
+</head>
+<body>
+<div class="container">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {svg_w} {svg_h}" width="{svg_w}" height="{svg_h}">
+    {svg_content}
+  </svg>
+</div>
+</body>
+</html>"""
+
+
+def html_page_sketch(title: str, svg_content: str, svg_h: int) -> str:
+    """Wrap SVG in a whiteboard/notebook-style HTML page for sketchnotes."""
+    escaped_title = xml_escape(title)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{escaped_title} - VideoMind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  html, body {{ height: 100%; width: 100%; }}
+  body {{
+    font-family: 'Caveat', 'Segoe Print', cursive;
+    background: #FFFDF7;
+    color: #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: auto;
+  }}
+  .container {{
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 30px 20px;
+    width: 100%;
+    max-width: 1100px;
+  }}
+  svg {{ max-width: 100%; height: auto; }}
+</style>
+</head>
+<body>
+<div class="container">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 {svg_h}" width="1000" height="{svg_h}">
+    <defs>
+      <filter id="sketchy" x="-2%" y="-2%" width="104%" height="104%">
+        <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="4" result="noise" seed="3"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+        <polygon points="0 0, 12 4, 0 8" fill="#333"/>
       </marker>
     </defs>
     {svg_content}
