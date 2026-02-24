@@ -315,6 +315,14 @@ class VisualFormat(ABC):
                     companion=dalle_options.get("companion", False),
                     background=dalle_options.get("background", False),
                 )
+                # Report results
+                if dalle_images:
+                    generated = [k for k in ("icons", "companion", "background")
+                                 if dalle_images.get(k)]
+                    if generated:
+                        print(f"    DALL-E generated: {', '.join(generated)}")
+                    else:
+                        print("    DALL-E: all calls failed, using fallback icons.")
 
         # ── Layer 3: Layout Engine — format-specific rendering ──
         print(f"  Layer 3: Rendering {self.FORMAT_TYPE} layout...")

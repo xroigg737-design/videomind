@@ -52,9 +52,8 @@ def validate_dalle_config():
     """Check that DALL-E configuration is present. Returns True if ready."""
     if not OPENAI_API_KEY:
         print(
-            "Warning: OPENAI_API_KEY not set. "
-            "DALL-E image generation will be skipped.",
-            file=sys.stderr,
+            "  Warning: OPENAI_API_KEY not set. "
+            "DALL-E image generation will be skipped."
         )
         return False
     return True

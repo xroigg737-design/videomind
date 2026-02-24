@@ -92,9 +92,13 @@
       <span class="step-dot"></span>
       2. Transcriure
     </div>
+    <div class="step" id="step-dalle" style="display: none;">
+      <span class="step-dot"></span>
+      3. DALL-E
+    </div>
     <div class="step" id="step-mindmap">
       <span class="step-dot"></span>
-      3. Visualitzacio
+      <span id="step-mindmap-label">3. Visualitzacio</span>
     </div>
   </div>
 
@@ -118,6 +122,7 @@ const logArea = document.getElementById('log-area');
 const steps = {
   download:   document.getElementById('step-download'),
   transcribe: document.getElementById('step-transcribe'),
+  dalle:      document.getElementById('step-dalle'),
   mindmap:    document.getElementById('step-mindmap')
 };
 
@@ -145,7 +150,12 @@ evtSource.addEventListener('log', function(e) {
 evtSource.addEventListener('step', function(e) {
   const data = JSON.parse(e.data);
   // Mark previous steps as done
-  const order = ['download', 'transcribe', 'mindmap'];
+  const order = ['download', 'transcribe', 'dalle', 'mindmap'];
+  // Show DALL-E step and renumber when it appears
+  if (data.step === 'dalle') {
+    steps.dalle.style.display = 'flex';
+    document.getElementById('step-mindmap-label').textContent = '4. Visualitzacio';
+  }
   const idx = order.indexOf(data.step);
   for (let i = 0; i < idx; i++) setStep(order[i], 'done');
   setStep(data.step, 'active');

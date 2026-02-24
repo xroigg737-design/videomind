@@ -83,7 +83,7 @@ def _compose_background_prompt(data: dict) -> str:
 def _call_dalle(prompt: str, size: str = "1024x1024") -> bytes | None:
     """Call the DALL-E API and return raw PNG bytes, or None on failure."""
     if not OPENAI_API_KEY:
-        logger.warning("OPENAI_API_KEY not set, skipping DALL-E call")
+        print("    DALL-E: OPENAI_API_KEY not set, skipping.")
         return None
 
     try:
@@ -101,7 +101,7 @@ def _call_dalle(prompt: str, size: str = "1024x1024") -> bytes | None:
         b64_data = response.data[0].b64_json
         return base64.b64decode(b64_data)
     except Exception as e:
-        logger.warning("DALL-E API call failed: %s", e)
+        print(f"    DALL-E API error: {e}")
         return None
 
 

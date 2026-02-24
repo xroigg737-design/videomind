@@ -138,6 +138,8 @@ def _run_job(job_id):
                 "infografia": "infografia",
             }
             format_label = format_labels.get(visual_type, visual_type)
+            if dalle_options and dalle_options.get("enabled"):
+                logger.step("dalle", f"Generant imatges DALL-E: {title}...")
             logger.step("mindmap", f"Generant {format_label}: {title}...")
             if not validate_config():
                 logger.fail("ANTHROPIC_API_KEY no configurada. Revisa el fitxer .env.")
