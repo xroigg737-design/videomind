@@ -14,14 +14,7 @@ import io
 import os
 import logging
 
-from config import (
-    OPENAI_API_KEY,
-    AZURE_OPENAI_ENDPOINT,
-    AZURE_OPENAI_API_KEY,
-    AZURE_OPENAI_API_VERSION,
-    DALLE_MODEL,
-    DALLE_QUALITY,
-)
+from config import OPENAI_API_KEY, DALLE_MODEL, DALLE_QUALITY
 
 logger = logging.getLogger(__name__)
 
@@ -87,33 +80,16 @@ def _compose_background_prompt(data: dict) -> str:
 # API interaction
 # ---------------------------------------------------------------------------
 
-def _get_openai_client():
-    """Return an OpenAI client, preferring Azure if configured."""
-    if AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT:
-        from openai import AzureOpenAI
-
-        return AzureOpenAI(
-            api_key=AZURE_OPENAI_API_KEY,
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            api_version=AZURE_OPENAI_API_VERSION,
-        )
-
-    if OPENAI_API_KEY:
-        from openai import OpenAI
-
-        return OpenAI(api_key=OPENAI_API_KEY)
-
-    return None
-
-
 def _call_dalle(prompt: str, size: str = "1024x1024") -> bytes | None:
     """Call the DALL-E API and return raw PNG bytes, or None on failure."""
-    client = _get_openai_client()
-    if client is None:
-        print("    DALL-E: No OpenAI/Azure API key set, skipping.")
+    if not OPENAI_API_KEY:
+        print("    DALL-E: OPENAI_API_KEY not set, skipping.")
         return None
 
     try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=OPENAI_API_KEY)
         response = client.images.generate(
             model=DALLE_MODEL,
             prompt=prompt,
