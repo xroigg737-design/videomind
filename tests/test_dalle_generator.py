@@ -128,7 +128,6 @@ class TestImageProcessing:
 
 
 class TestCallDalle:
-    @patch("pipeline.dalle_generator.OPENAI_API_KEY", "test-key")
     def test_call_dalle_success(self):
         from pipeline.dalle_generator import _call_dalle
 
@@ -141,28 +140,25 @@ class TestCallDalle:
         mock_response.data = [MagicMock(b64_json=b64_data)]
         mock_client.images.generate.return_value = mock_response
 
-        mock_openai_cls = MagicMock(return_value=mock_client)
-        mock_openai_module = MagicMock(OpenAI=mock_openai_cls)
-
-        with patch.dict("sys.modules", {"openai": mock_openai_module}):
+        with patch("pipeline.dalle_generator._get_openai_client", return_value=mock_client):
             result = _call_dalle("test prompt")
 
         assert result == png_bytes
 
-    @patch("pipeline.dalle_generator.OPENAI_API_KEY", "")
     def test_call_dalle_no_api_key(self):
         from pipeline.dalle_generator import _call_dalle
-        result = _call_dalle("test prompt")
+
+        with patch("pipeline.dalle_generator._get_openai_client", return_value=None):
+            result = _call_dalle("test prompt")
         assert result is None
 
-    @patch("pipeline.dalle_generator.OPENAI_API_KEY", "test-key")
     def test_call_dalle_api_error(self):
         from pipeline.dalle_generator import _call_dalle
 
-        mock_openai_module = MagicMock()
-        mock_openai_module.OpenAI.side_effect = Exception("API error")
+        mock_client = MagicMock()
+        mock_client.images.generate.side_effect = Exception("API error")
 
-        with patch.dict("sys.modules", {"openai": mock_openai_module}):
+        with patch("pipeline.dalle_generator._get_openai_client", return_value=mock_client):
             result = _call_dalle("test prompt")
         assert result is None
 

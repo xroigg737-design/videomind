@@ -13,11 +13,16 @@ load_dotenv()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+# Azure OpenAI settings
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY", "")
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+
 # Anthropic model for concept map generation
 CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
 
-# DALL-E settings
-DALLE_MODEL = "dall-e-3"
+# DALL-E settings — use Azure deployment name if available
+DALLE_MODEL = os.getenv("AZURE_DALLE_DEPLOYMENT", "dall-e-3")
 DALLE_QUALITY = "standard"
 
 # Default settings
@@ -50,9 +55,11 @@ def validate_config():
 
 def validate_dalle_config():
     """Check that DALL-E configuration is present. Returns True if ready."""
+    if AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT:
+        return True
     if not OPENAI_API_KEY:
         print(
-            "  Warning: OPENAI_API_KEY not set. "
+            "  Warning: OPENAI_API_KEY or AZURE_OPENAI_API_KEY not set. "
             "DALL-E image generation will be skipped."
         )
         return False
