@@ -15,7 +15,7 @@ import webbrowser
 # Allow running from the project directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import DEFAULT_OUTPUT_DIR, DEFAULT_VISUAL_TYPE, DEFAULT_WHISPER_MODEL, validate_config
+from config import APP_VERSION, DEFAULT_OUTPUT_DIR, DEFAULT_VISUAL_TYPE, DEFAULT_WHISPER_MODEL, validate_config
 from pipeline.downloader import download_audio
 from pipeline.extractor import extract_audio_from_folder
 from pipeline.transcriber import transcribe_audio
@@ -168,13 +168,14 @@ def process_video(
 def main():
     args = parse_args()
 
-    print("""
+    print(f"""
  __      ___     _           __  __ _           _
  \\ \\    / (_)   | |         |  \\/  (_)         | |
   \\ \\  / / _  __| | ___  ___| \\  / |_ _ __   __| |
    \\ \\/ / | |/ _` |/ _ \\/ _ \\ |\\/| | | '_ \\ / _` |
     \\  /  | | (_| |  __/ (_) | |  | | | | | | (_| |
      \\/   |_|\\__,_|\\___|\\___/|_|  |_|_|_| |_|\\__,_|
+                                          v{APP_VERSION}
     """)
 
     if not validate_config():

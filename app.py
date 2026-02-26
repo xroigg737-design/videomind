@@ -14,7 +14,7 @@ from flask import Flask, render_template, request, redirect, url_for, Response, 
 # Allow running from the project directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import DEFAULT_OUTPUT_DIR, DEFAULT_WHISPER_MODEL, validate_config
+from config import APP_VERSION, DEFAULT_OUTPUT_DIR, DEFAULT_WHISPER_MODEL, validate_config
 
 app = Flask(__name__)
 
@@ -395,6 +395,6 @@ def serve_output(filepath):
 
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    print("VideoMind web: http://localhost:5000")
+    print(f"VideoMind v{APP_VERSION} web: http://localhost:5000")
     print(f"Output dir:    {OUTPUT_DIR}")
     app.run(debug=True, host="0.0.0.0", port=5000, threaded=True)

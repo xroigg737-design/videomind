@@ -21,6 +21,9 @@ AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
 # Anthropic model for concept map generation
 CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
 
+# App version
+APP_VERSION = "3.0"
+
 # DALL-E settings
 DALLE_MODEL = "dall-e-3"
 DALLE_QUALITY = "standard"
