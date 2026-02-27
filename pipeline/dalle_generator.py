@@ -199,7 +199,7 @@ def generate_companion_image(
     """
     prompt = _compose_companion_prompt(data, format_type)
     print("    DALL-E: Generating companion image...")
-    image_bytes = _call_dalle(prompt, size="1792x1024")
+    image_bytes = _call_dalle(prompt, size="1536x1024")
     if image_bytes is None:
         return None
 

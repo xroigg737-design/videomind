@@ -25,8 +25,8 @@ CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
 APP_VERSION = "3.0"
 
 # DALL-E settings
-DALLE_MODEL = "dall-e-3"
-DALLE_QUALITY = "standard"
+DALLE_MODEL = "gpt-image-1.5"
+DALLE_QUALITY = "high"
 
 # Default settings
 DEFAULT_WHISPER_MODEL = "base"
