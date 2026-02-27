@@ -89,6 +89,18 @@
   </div>
   {% endif %}
 
+  {% if files.dalle_infographics %}
+  <div class="section">
+    <h2>Infografia IA</h2>
+    {% for infographic in files.dalle_infographics %}
+    <div style="margin-bottom: 16px;">
+      <img src="{{ url_for('serve_output', filepath=title ~ '/' ~ infographic) }}" alt="DALL-E infographic"
+           style="max-width: 100%; border-radius: 8px; border: 1px solid #0f3460; box-shadow: 0 4px 24px rgba(0,0,0,0.12);">
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if files.dalle_companions or files.dalle_icon_grid %}
   <div class="section">
     <h2>Visuals DALL-E</h2>
@@ -165,6 +177,9 @@
       {% if files.infografia_json %}
       <a href="{{ url_for('serve_output', filepath=title ~ '/infografia.json') }}" class="btn btn-sm btn-outline" download>Infografia JSON</a>
       {% endif %}
+      {% for infographic in files.dalle_infographics %}
+      <a href="{{ url_for('serve_output', filepath=title ~ '/' ~ infographic) }}" class="btn btn-sm btn-outline" download>Infografia IA PNG</a>
+      {% endfor %}
       {% if files.dalle_icon_grid %}
       <a href="{{ url_for('serve_output', filepath=title ~ '/dalle_icon_grid.png') }}" class="btn btn-sm btn-outline" download>DALL-E Icones PNG</a>
       {% endif %}

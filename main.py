@@ -111,6 +111,12 @@ Examples:
         dest="dalle_background",
         help="Also generate a DALL-E background texture (extra $0.04).",
     )
+    parser.add_argument(
+        "--dalle-infographic",
+        action="store_true",
+        dest="dalle_infographic",
+        help="Generate a full AI infographic image (replaces component images). ~$0.08-0.17.",
+    )
 
     return parser.parse_args()
 
@@ -227,12 +233,13 @@ def main():
 
     # Build DALL-E options
     dalle_options = None
-    if args.dalle:
+    if args.dalle or args.dalle_infographic:
         dalle_options = {
             "enabled": True,
-            "icons": True,
-            "companion": args.dalle_companion,
-            "background": args.dalle_background,
+            "full_infographic": args.dalle_infographic,
+            "icons": not args.dalle_infographic,
+            "companion": args.dalle_companion and not args.dalle_infographic,
+            "background": args.dalle_background and not args.dalle_infographic,
         }
 
     # Step 2-3: Process each video

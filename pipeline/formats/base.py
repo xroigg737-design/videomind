@@ -198,6 +198,58 @@ def html_page_executive(title: str, svg_content: str, svg_w: int, svg_h: int) ->
     return html_page_clean(title, svg_content, svg_w, svg_h)
 
 
+def html_page_image(title: str, image_uri: str, width: int, height: int) -> str:
+    """Wrap an AI-generated infographic image in a responsive HTML page."""
+    escaped_title = xml_escape(title)
+    font = DESIGN_TOKENS["font_heading"]
+    bg = DESIGN_TOKENS["background"]
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{escaped_title} - VideoMind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  html, body {{ height: 100%; width: 100%; }}
+  body {{
+    font-family: {font};
+    background: {bg};
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: auto;
+  }}
+  .container {{
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+    width: 100%;
+    max-width: 1400px;
+  }}
+  .infographic-img {{
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  }}
+</style>
+</head>
+<body>
+<div class="container">
+  <img src="{image_uri}" alt="{escaped_title}" class="infographic-img"
+       width="{width}" height="{height}">
+</div>
+</body>
+</html>"""
+
+
 # ---------------------------------------------------------------------------
 # Abstract base class
 # ---------------------------------------------------------------------------
@@ -306,7 +358,10 @@ class VisualFormat(ABC):
             from config import validate_dalle_config
             if validate_dalle_config():
                 from pipeline.dalle_generator import generate_all_images
-                print("  Image Layer: Generating DALL-E images...")
+                if dalle_options.get("full_infographic"):
+                    print("  Image Layer: Generating full AI infographic...")
+                else:
+                    print("  Image Layer: Generating DALL-E images...")
                 dalle_images = generate_all_images(
                     data,
                     format_type=self.FORMAT_TYPE,
@@ -314,15 +369,20 @@ class VisualFormat(ABC):
                     icons=dalle_options.get("icons", True),
                     companion=dalle_options.get("companion", False),
                     background=dalle_options.get("background", False),
+                    full_infographic=dalle_options.get("full_infographic", False),
+                    language=language,
                 )
                 # Report results
                 if dalle_images:
-                    generated = [k for k in ("icons", "companion", "background")
+                    generated = [k for k in ("icons", "companion", "background", "full_infographic")
                                  if dalle_images.get(k)]
                     if generated:
-                        print(f"    DALL-E generated: {', '.join(generated)}")
+                        labels = {"full_infographic": "infografia IA", "icons": "icones",
+                                  "companion": "il·lustracio", "background": "textura"}
+                        names = [labels.get(k, k) for k in generated]
+                        print(f"    Imatges generades: {', '.join(names)}")
                     else:
-                        print("    DALL-E: all calls failed, using fallback icons.")
+                        print("    Generacio d'imatges fallida, usant icones SVG.")
 
         # ── Layer 3: Layout Engine — format-specific rendering ──
         print(f"  Layer 3: Rendering {self.FORMAT_TYPE} layout...")
@@ -347,7 +407,16 @@ class VisualFormat(ABC):
             print(f"  Saved: {md_path}")
 
         if formats in ("all", "html"):
-            html_content = self.generate_html(data, dalle_images=dalle_images)
+            # Use full AI-generated infographic if available
+            full_info = dalle_images.get("full_infographic") if dalle_images else None
+            if full_info:
+                size_parts = full_info["size"].split("x")
+                w, h = int(size_parts[0]), int(size_parts[1])
+                html_content = html_page_image(
+                    data.get("title", ""), full_info["image_uri"], w, h
+                )
+            else:
+                html_content = self.generate_html(data, dalle_images=dalle_images)
             html_path = os.path.join(output_dir, f"{prefix}.html")
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html_content)

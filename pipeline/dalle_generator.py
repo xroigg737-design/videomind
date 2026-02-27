@@ -64,6 +64,93 @@ def _compose_companion_prompt(data: dict, format_type: str) -> str:
     )
 
 
+def _compose_infographic_prompt(data: dict, format_type: str, language: str) -> str:
+    """Build a prompt for a full AI-generated infographic image.
+
+    Translates structured content JSON into a detailed visual description
+    with format-specific style instructions.
+    """
+    title = data.get("title", "")
+    central = data.get("central_idea", "")
+    sections = data.get("sections", [])[:4]
+
+    # Build section descriptions
+    section_lines = []
+    for i, sec in enumerate(sections, 1):
+        label = sec.get("label", "")
+        bullets = sec.get("bullets", [])
+        bullet_text = "; ".join(b if isinstance(b, str) else b.get("text", "") for b in bullets[:4])
+        section_lines.append(f"Section {i}: \"{label}\" — {bullet_text}")
+    sections_desc = "\n".join(section_lines)
+
+    # Practice plan if present
+    practice = data.get("practice_plan", {})
+    practice_desc = ""
+    if practice:
+        steps = practice.get("steps", [])
+        if steps:
+            step_texts = [s if isinstance(s, str) else s.get("text", "") for s in steps[:3]]
+            practice_desc = f'\nPractice plan: "{practice.get("title", "Practice")}": {"; ".join(step_texts)}'
+
+    # Examples if present
+    examples = data.get("examples", [])
+    examples_desc = ""
+    if examples:
+        ex_texts = [e if isinstance(e, str) else e.get("text", "") for e in examples[:3]]
+        examples_desc = f"\nExamples: {'; '.join(ex_texts)}"
+
+    # Format-specific style
+    style_instructions = {
+        "infografia": (
+            "Style: Professional vertical infographic poster with watercolor painted header banner, "
+            "soft pastel color palette, cute cartoon illustrations for each section, "
+            "decorative borders and dividers, rounded content boxes with subtle shadows. "
+            "Layout: Vertical poster format. Title at top in large decorative text over watercolor splash. "
+            "Sections flow top to bottom, each with its own illustrated icon and colored box. "
+            "Overall feel: warm, educational, visually rich like a classroom poster."
+        ),
+        "sketchnote": (
+            "Style: Hand-drawn sketchnote on white paper with brush-stroke lettering, "
+            "doodle illustrations, organic flowing layout with arrows and connectors, "
+            "marker-style text in varied sizes, small cartoon characters and icons. "
+            "Layout: Landscape notebook page. Title in large hand-lettered text at top center. "
+            "Sections spread organically across the page connected by arrows and doodle lines. "
+            "Overall feel: personal notebook, hand-crafted, like visual meeting notes."
+        ),
+        "mindmap": (
+            "Style: Clean modern mind map diagram with a central node and radiating branches, "
+            "each branch a different color, clean sans-serif text, simple geometric icons, "
+            "thin connecting lines, minimalist flat design. "
+            "Layout: Landscape format. Central idea in the middle circle, branches radiating outward. "
+            "Overall feel: clean, professional, organized radial diagram."
+        ),
+    }
+    style = style_instructions.get(format_type, style_instructions["infografia"])
+
+    # Language instruction
+    lang_name = {
+        "ca": "Catalan", "es": "Spanish", "en": "English",
+        "fr": "French", "de": "German", "it": "Italian", "pt": "Portuguese",
+    }.get(language, language if language else "the same language as the content")
+    lang_instruction = (
+        f"CRITICAL: All visible text in the image MUST be written in {lang_name}. "
+        f"Reproduce the exact text provided below — do not translate, rephrase, or abbreviate."
+    )
+
+    return (
+        f"Create a complete educational infographic image.\n\n"
+        f"{lang_instruction}\n\n"
+        f"Title: \"{title}\"\n"
+        f"Central idea: \"{central}\"\n"
+        f"{sections_desc}"
+        f"{examples_desc}"
+        f"{practice_desc}\n\n"
+        f"{style}\n\n"
+        f"IMPORTANT: Include ALL the text content listed above in the image, "
+        f"spelled exactly as written. The text is educational content and must be readable."
+    )
+
+
 def _compose_background_prompt(data: dict) -> str:
     """Build a prompt for a subtle background texture."""
     title = data.get("title", "abstract")
@@ -235,6 +322,38 @@ def generate_background(data: dict, output_dir: str) -> dict | None:
     }
 
 
+def generate_full_infographic(
+    data: dict, format_type: str, output_dir: str, language: str = ""
+) -> dict | None:
+    """Generate a complete AI infographic as a single image.
+
+    Returns dict with 'image_path', 'image_uri', 'size', or None on failure.
+    """
+    prompt = _compose_infographic_prompt(data, format_type, language)
+
+    # Size by format: vertical for infografia, landscape for others
+    if format_type == "infografia":
+        size = "1024x1536"
+    else:
+        size = "1536x1024"
+
+    print(f"    {DALLE_MODEL}: Generating full {format_type} infographic ({size})...")
+    image_bytes = _call_dalle(prompt, size=size)
+    if image_bytes is None:
+        return None
+
+    image_path = os.path.join(output_dir, f"dalle_infographic_{format_type}.png")
+    with open(image_path, "wb") as f:
+        f.write(image_bytes)
+
+    print(f"    {DALLE_MODEL}: Full infographic generated.")
+    return {
+        "image_path": image_path,
+        "image_uri": image_to_base64_uri(image_bytes),
+        "size": size,
+    }
+
+
 def generate_all_images(
     data: dict,
     format_type: str,
@@ -242,6 +361,8 @@ def generate_all_images(
     icons: bool = True,
     companion: bool = False,
     background: bool = False,
+    full_infographic: bool = False,
+    language: str = "",
 ) -> dict:
     """Orchestrate all DALL-E image generation.
 
@@ -252,12 +373,25 @@ def generate_all_images(
         icons: Generate section icons (default True when DALL-E enabled).
         companion: Generate companion illustration.
         background: Generate background texture.
+        full_infographic: Generate a single AI image for the entire infographic.
+        language: Content language code for text accuracy.
 
     Returns:
-        dict with keys 'icons', 'companion', 'background' (each may be None).
+        dict with keys 'icons', 'companion', 'background', 'full_infographic'
+        (each may be None).
     """
     os.makedirs(output_dir, exist_ok=True)
-    result = {"icons": None, "companion": None, "background": None}
+    result = {"icons": None, "companion": None, "background": None, "full_infographic": None}
+
+    # Full infographic mode: one call replaces all component images
+    if full_infographic:
+        result["full_infographic"] = generate_full_infographic(
+            data, format_type, output_dir, language=language
+        )
+        if result["full_infographic"]:
+            # Success — skip component generation
+            return result
+        print(f"    {DALLE_MODEL}: Full infographic failed, falling back to component images.")
 
     if icons:
         result["icons"] = generate_section_icons(data, output_dir)

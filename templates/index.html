@@ -88,50 +88,87 @@
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="visual_type">Tipus de visualitzacio</label>
-          <div style="display: flex; gap: 8px; align-items: start;">
-            <select name="visual_type" id="visual_type" style="flex: 1;">
-              <option value="sketchnote" selected>Sketchnote</option>
-              <option value="mindmap">Mapa mental</option>
-              <option value="infografia">Infografia</option>
-            </select>
-            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('ref-image').click()">
-              Detectar
-            </button>
-          </div>
-          <input type="file" id="ref-image" accept="image/*" style="display:none" onchange="classifyImage(this)">
-          <div id="classify-status" class="model-desc"></div>
-        </div>
+      <div class="form-group">
+        <label>Estil visual</label>
+        <div class="model-desc" style="margin-bottom: 8px;">Tria com vols que es generi el contingut visual.</div>
+        <div id="visual-mode-options">
+          <label style="display: block; margin-bottom: 10px; padding: 10px; border: 1px solid #222; border-radius: 8px; cursor: pointer;" id="mode-svg-label">
+            <input type="radio" name="visual_mode" value="svg" checked onchange="updateVisualMode()">
+            <strong>Diagrama SVG</strong> — gratuit, rapid
+            <div class="model-desc" style="margin-left: 20px;">
+              Genera un diagrama vectorial (SVG) amb el contingut estructurat. Sense cost addicional.
+            </div>
+            <div id="svg-options" style="margin-top: 8px; margin-left: 20px;">
+              <div style="display: flex; gap: 8px; align-items: start;">
+                <select name="visual_type" id="visual_type" style="flex: 1;">
+                  <option value="sketchnote" selected>Sketchnote — apunts visuals a ma</option>
+                  <option value="mindmap">Mapa mental — diagrama radial</option>
+                  <option value="infografia">Infografia — poster vertical</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('ref-image').click()">
+                  Detectar
+                </button>
+              </div>
+              <input type="file" id="ref-image" accept="image/*" style="display:none" onchange="classifyImage(this)">
+              <div id="classify-status" class="model-desc"></div>
+            </div>
+          </label>
 
-        <div class="form-group">
-          <label for="format">Format de sortida</label>
-          <select name="format" id="format">
-            <option value="all" selected>Tots (HTML + Markdown + JSON)</option>
-            <option value="html">Nomes HTML</option>
-            <option value="md">Nomes Markdown</option>
-            <option value="json">Nomes JSON</option>
-          </select>
+          <label style="display: block; margin-bottom: 10px; padding: 10px; border: 1px solid #222; border-radius: 8px; cursor: pointer;" id="mode-dalle-label">
+            <input type="radio" name="visual_mode" value="dalle_components" onchange="updateVisualMode()">
+            <strong>SVG + imatges DALL-E</strong> — ~$0.04-0.16
+            <div class="model-desc" style="margin-left: 20px;">
+              Diagrama SVG enriquit amb icones, il·lustracions i textures generades per IA.
+            </div>
+            <div id="dalle-component-options" style="display: none; margin-top: 8px; margin-left: 20px;">
+              <div style="display: flex; gap: 8px; align-items: start; margin-bottom: 8px;">
+                <select name="visual_type_dalle" id="visual_type_dalle" style="flex: 1;">
+                  <option value="sketchnote" selected>Sketchnote</option>
+                  <option value="mindmap">Mapa mental</option>
+                  <option value="infografia">Infografia</option>
+                </select>
+              </div>
+              <label style="display: block; margin-bottom: 4px;">
+                <input type="checkbox" name="dalle_companion">
+                Imatge complementaria (+$0.04-0.08)
+              </label>
+              <label style="display: block;">
+                <input type="checkbox" name="dalle_background">
+                Textura de fons (+$0.04)
+              </label>
+            </div>
+          </label>
+
+          <label style="display: block; margin-bottom: 10px; padding: 10px; border: 1px solid #222; border-radius: 8px; cursor: pointer;" id="mode-full-label">
+            <input type="radio" name="visual_mode" value="full_infographic" onchange="updateVisualMode()">
+            <strong>Infografia completa amb IA</strong> — ~$0.08-0.17
+            <div class="model-desc" style="margin-left: 20px;">
+              Una sola imatge generada per IA amb tot el contingut. Maxima qualitat visual, estil poster o sketchnote.
+            </div>
+            <div id="full-infographic-options" style="display: none; margin-top: 8px; margin-left: 20px;">
+              <select name="visual_type_full" id="visual_type_full" style="width: 100%;">
+                <option value="infografia" selected>Infografia — poster vertical aquarel·la</option>
+                <option value="sketchnote">Sketchnote — apunts a ma, horitzontal</option>
+                <option value="mindmap">Mapa mental — diagrama radial net</option>
+              </select>
+              <div class="model-desc">El text del video s'inclou directament dins la imatge generada.</div>
+            </div>
+          </label>
         </div>
       </div>
 
+      <!-- Hidden fields populated by JS based on visual_mode -->
+      <input type="hidden" name="dalle_enabled" id="dalle_enabled_hidden" value="">
+      <input type="hidden" name="dalle_infographic" id="dalle_infographic_hidden" value="">
+
       <div class="form-group">
-        <label>
-          <input type="checkbox" name="dalle_enabled" id="dalle_enabled" onchange="toggleDalleOptions()">
-          Generar imatges amb DALL-E ($)
-        </label>
-        <div class="model-desc">Requereix OPENAI_API_KEY. Icones de seccio ~$0.04.</div>
-        <div id="dalle-options" style="display: none; margin-top: 8px; padding-left: 20px;">
-          <label style="display: block; margin-bottom: 4px;">
-            <input type="checkbox" name="dalle_companion">
-            Imatge complementaria (+$0.04-0.08)
-          </label>
-          <label style="display: block;">
-            <input type="checkbox" name="dalle_background">
-            Textura de fons (+$0.04)
-          </label>
-        </div>
+        <label for="format">Format de sortida</label>
+        <select name="format" id="format">
+          <option value="all" selected>Tots (HTML + Markdown + JSON)</option>
+          <option value="html">Nomes HTML</option>
+          <option value="md">Nomes Markdown</option>
+          <option value="json">Nomes JSON</option>
+        </select>
       </div>
 
       <button type="submit" class="btn" style="width: 100%;">Processar</button>
@@ -160,10 +197,38 @@ function updateModelDesc() {
   document.getElementById('model-desc').textContent = MODEL_DESCS[sel.value] || '';
 }
 
-function toggleDalleOptions() {
-  const cb = document.getElementById('dalle_enabled');
-  document.getElementById('dalle-options').style.display = cb.checked ? 'block' : 'none';
+function updateVisualMode() {
+  const mode = document.querySelector('input[name="visual_mode"]:checked').value;
+
+  // Show/hide sub-options
+  document.getElementById('svg-options').style.display = mode === 'svg' ? 'block' : 'none';
+  document.getElementById('dalle-component-options').style.display = mode === 'dalle_components' ? 'block' : 'none';
+  document.getElementById('full-infographic-options').style.display = mode === 'full_infographic' ? 'block' : 'none';
+
+  // Highlight selected card
+  document.getElementById('mode-svg-label').style.borderColor = mode === 'svg' ? '#e94560' : '#222';
+  document.getElementById('mode-dalle-label').style.borderColor = mode === 'dalle_components' ? '#e94560' : '#222';
+  document.getElementById('mode-full-label').style.borderColor = mode === 'full_infographic' ? '#e94560' : '#222';
+
+  // Set hidden fields for the backend
+  document.getElementById('dalle_enabled_hidden').value = mode === 'dalle_components' ? 'on' : '';
+  document.getElementById('dalle_infographic_hidden').value = mode === 'full_infographic' ? 'on' : '';
+
+  // Sync visual_type: copy the active sub-select into the main visual_type
+  if (mode === 'dalle_components') {
+    document.getElementById('visual_type').value = document.getElementById('visual_type_dalle').value;
+  } else if (mode === 'full_infographic') {
+    document.getElementById('visual_type').value = document.getElementById('visual_type_full').value;
+  }
 }
+
+// Keep sub-selects in sync with main visual_type
+document.getElementById('visual_type_dalle').addEventListener('change', function() {
+  document.getElementById('visual_type').value = this.value;
+});
+document.getElementById('visual_type_full').addEventListener('change', function() {
+  document.getElementById('visual_type').value = this.value;
+});
 
 async function classifyImage(input) {
   if (!input.files[0]) return;

@@ -15,7 +15,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # Allow running from the project directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import APP_VERSION, DEFAULT_OUTPUT_DIR, DEFAULT_WHISPER_MODEL, validate_config
+from config import APP_VERSION, DEFAULT_OUTPUT_DIR, DEFAULT_WHISPER_MODEL, DALLE_MODEL, validate_config
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_prefix=1)
@@ -141,7 +141,10 @@ def _run_job(job_id):
             }
             format_label = format_labels.get(visual_type, visual_type)
             if dalle_options and dalle_options.get("enabled"):
-                logger.step("dalle", f"Generant imatges DALL-E: {title}...")
+                if dalle_options.get("full_infographic"):
+                    logger.step("dalle", f"Generant infografia IA ({DALLE_MODEL}): {title}...")
+                else:
+                    logger.step("dalle", f"Generant imatges DALL-E: {title}...")
             logger.step("mindmap", f"Generant {format_label}: {title}...")
             if not validate_config():
                 logger.fail("ANTHROPIC_API_KEY no configurada. Revisa el fitxer .env.")
@@ -279,13 +282,15 @@ def process():
 
     # DALL-E options
     dalle_enabled = request.form.get("dalle_enabled") == "on"
+    dalle_infographic = request.form.get("dalle_infographic") == "on"
     dalle_options = None
-    if dalle_enabled:
+    if dalle_enabled or dalle_infographic:
         dalle_options = {
             "enabled": True,
-            "icons": True,
-            "companion": request.form.get("dalle_companion") == "on",
-            "background": request.form.get("dalle_background") == "on",
+            "full_infographic": dalle_infographic,
+            "icons": not dalle_infographic,
+            "companion": request.form.get("dalle_companion") == "on" and not dalle_infographic,
+            "background": request.form.get("dalle_background") == "on" and not dalle_infographic,
         }
 
     # Create job
@@ -357,6 +362,9 @@ def viewer(title):
         f for f in files_present if f.startswith("dalle_companion_") and f.endswith(".png")
     )
     dalle_icon_grid = "dalle_icon_grid.png" in files_present
+    dalle_infographics = sorted(
+        f for f in files_present if f.startswith("dalle_infographic_") and f.endswith(".png")
+    )
 
     files = {
         "audio": "audio.mp3" in files_present,
@@ -373,6 +381,7 @@ def viewer(title):
         "infografia_json": "infografia.json" in files_present,
         "dalle_companions": dalle_companions,
         "dalle_icon_grid": dalle_icon_grid,
+        "dalle_infographics": dalle_infographics,
     }
 
     # Load transcript text
