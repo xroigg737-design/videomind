@@ -68,7 +68,7 @@
         {% if v.has_dalle %}<span class="badge badge-ok">DALL-E</span>{% endif %}
       </div>
       <div class="card-actions">
-        <a href="/viewer/{{ v.title | urlencode }}" class="btn btn-sm btn-outline">Veure</a>
+        <a href="{{ url_for('viewer', title=v.title) }}" class="btn btn-sm btn-outline">Veure</a>
       </div>
     </div>
     {% endfor %}
@@ -77,7 +77,7 @@
   <div class="empty-state">
     <h2>Cap vídeo processat</h2>
     <p>Processa el teu primer vídeo des de la pagina d'inici.</p>
-    <a href="/" class="btn mt-2">Anar a l'inici</a>
+    <a href="{{ url_for('index') }}" class="btn mt-2">Anar a l'inici</a>
   </div>
   {% endif %}
 </div>

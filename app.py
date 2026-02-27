@@ -10,6 +10,7 @@ from queue import Queue, Empty
 from urllib.parse import unquote
 
 from flask import Flask, render_template, request, redirect, url_for, Response, send_from_directory, abort
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Allow running from the project directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -17,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import APP_VERSION, DEFAULT_OUTPUT_DIR, DEFAULT_WHISPER_MODEL, validate_config
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_prefix=1)
 
 OUTPUT_DIR = os.path.abspath(DEFAULT_OUTPUT_DIR)
 

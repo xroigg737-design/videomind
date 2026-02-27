@@ -64,28 +64,28 @@
 {% block content %}
 <div class="container">
   <div class="viewer-header">
-    <a href="/library" class="back">&larr; Tornar a la biblioteca</a>
+    <a href="{{ url_for('library') }}" class="back">&larr; Tornar a la biblioteca</a>
     <h1>{{ title }}</h1>
   </div>
 
   {% if files.html %}
   <div class="section">
     <h2>Sketchnote</h2>
-    <iframe src="/output/{{ title | urlencode }}/mindmap.html" class="mindmap-frame" frameborder="0"></iframe>
+    <iframe src="{{ url_for('serve_output', filepath=title ~ '/mindmap.html') }}" class="mindmap-frame" frameborder="0"></iframe>
   </div>
   {% endif %}
 
   {% if files.mindmap_tree_html %}
   <div class="section">
     <h2>Mapa mental</h2>
-    <iframe src="/output/{{ title | urlencode }}/mindmap_tree.html" class="mindmap-frame" frameborder="0"></iframe>
+    <iframe src="{{ url_for('serve_output', filepath=title ~ '/mindmap_tree.html') }}" class="mindmap-frame" frameborder="0"></iframe>
   </div>
   {% endif %}
 
   {% if files.infografia_html %}
   <div class="section">
     <h2>Infografia</h2>
-    <iframe src="/output/{{ title | urlencode }}/infografia.html" class="mindmap-frame" frameborder="0"></iframe>
+    <iframe src="{{ url_for('serve_output', filepath=title ~ '/infografia.html') }}" class="mindmap-frame" frameborder="0"></iframe>
   </div>
   {% endif %}
 
@@ -95,14 +95,14 @@
     {% if files.dalle_icon_grid %}
     <div style="margin-bottom: 16px;">
       <h3 style="font-size: 0.95rem; color: #aaa; margin-bottom: 8px;">Icones de seccions</h3>
-      <img src="/output/{{ title | urlencode }}/dalle_icon_grid.png" alt="DALL-E icon grid"
+      <img src="{{ url_for('serve_output', filepath=title ~ '/dalle_icon_grid.png') }}" alt="DALL-E icon grid"
            style="max-width: 300px; border-radius: 8px; border: 1px solid #0f3460;">
     </div>
     {% endif %}
     {% for companion in files.dalle_companions %}
     <div style="margin-bottom: 16px;">
       <h3 style="font-size: 0.95rem; color: #aaa; margin-bottom: 8px;">Imatge complementaria</h3>
-      <img src="/output/{{ title | urlencode }}/{{ companion }}" alt="DALL-E companion"
+      <img src="{{ url_for('serve_output', filepath=title ~ '/' ~ companion) }}" alt="DALL-E companion"
            style="max-width: 100%; border-radius: 8px; border: 1px solid #0f3460;">
     </div>
     {% endfor %}
@@ -120,7 +120,7 @@
   <div class="section">
     <h2>Audio</h2>
     <audio controls preload="metadata">
-      <source src="/output/{{ title | urlencode }}/audio.mp3" type="audio/mpeg">
+      <source src="{{ url_for('serve_output', filepath=title ~ '/audio.mp3') }}" type="audio/mpeg">
       El teu navegador no suporta l'element audio.
     </audio>
   </div>
@@ -130,46 +130,46 @@
     <h2>Descarregues</h2>
     <div class="downloads">
       {% if files.audio %}
-      <a href="/output/{{ title | urlencode }}/audio.mp3" class="btn btn-sm btn-outline" download>Audio MP3</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/audio.mp3') }}" class="btn btn-sm btn-outline" download>Audio MP3</a>
       {% endif %}
       {% if files.transcript %}
-      <a href="/output/{{ title | urlencode }}/transcript.txt" class="btn btn-sm btn-outline" download>Transcript TXT</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/transcript.txt') }}" class="btn btn-sm btn-outline" download>Transcript TXT</a>
       {% endif %}
       {% if files.srt %}
-      <a href="/output/{{ title | urlencode }}/transcript.srt" class="btn btn-sm btn-outline" download>Subtitols SRT</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/transcript.srt') }}" class="btn btn-sm btn-outline" download>Subtitols SRT</a>
       {% endif %}
       {% if files.html %}
-      <a href="/output/{{ title | urlencode }}/mindmap.html" class="btn btn-sm btn-outline" download>Sketchnote HTML</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/mindmap.html') }}" class="btn btn-sm btn-outline" download>Sketchnote HTML</a>
       {% endif %}
       {% if files.md %}
-      <a href="/output/{{ title | urlencode }}/mindmap.md" class="btn btn-sm btn-outline" download>Sketchnote MD</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/mindmap.md') }}" class="btn btn-sm btn-outline" download>Sketchnote MD</a>
       {% endif %}
       {% if files.json %}
-      <a href="/output/{{ title | urlencode }}/mindmap.json" class="btn btn-sm btn-outline" download>Sketchnote JSON</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/mindmap.json') }}" class="btn btn-sm btn-outline" download>Sketchnote JSON</a>
       {% endif %}
       {% if files.mindmap_tree_html %}
-      <a href="/output/{{ title | urlencode }}/mindmap_tree.html" class="btn btn-sm btn-outline" download>Mapa mental HTML</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/mindmap_tree.html') }}" class="btn btn-sm btn-outline" download>Mapa mental HTML</a>
       {% endif %}
       {% if files.mindmap_tree_md %}
-      <a href="/output/{{ title | urlencode }}/mindmap_tree.md" class="btn btn-sm btn-outline" download>Mapa mental MD</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/mindmap_tree.md') }}" class="btn btn-sm btn-outline" download>Mapa mental MD</a>
       {% endif %}
       {% if files.mindmap_tree_json %}
-      <a href="/output/{{ title | urlencode }}/mindmap_tree.json" class="btn btn-sm btn-outline" download>Mapa mental JSON</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/mindmap_tree.json') }}" class="btn btn-sm btn-outline" download>Mapa mental JSON</a>
       {% endif %}
       {% if files.infografia_html %}
-      <a href="/output/{{ title | urlencode }}/infografia.html" class="btn btn-sm btn-outline" download>Infografia HTML</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/infografia.html') }}" class="btn btn-sm btn-outline" download>Infografia HTML</a>
       {% endif %}
       {% if files.infografia_md %}
-      <a href="/output/{{ title | urlencode }}/infografia.md" class="btn btn-sm btn-outline" download>Infografia MD</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/infografia.md') }}" class="btn btn-sm btn-outline" download>Infografia MD</a>
       {% endif %}
       {% if files.infografia_json %}
-      <a href="/output/{{ title | urlencode }}/infografia.json" class="btn btn-sm btn-outline" download>Infografia JSON</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/infografia.json') }}" class="btn btn-sm btn-outline" download>Infografia JSON</a>
       {% endif %}
       {% if files.dalle_icon_grid %}
-      <a href="/output/{{ title | urlencode }}/dalle_icon_grid.png" class="btn btn-sm btn-outline" download>DALL-E Icones PNG</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/dalle_icon_grid.png') }}" class="btn btn-sm btn-outline" download>DALL-E Icones PNG</a>
       {% endif %}
       {% for companion in files.dalle_companions %}
-      <a href="/output/{{ title | urlencode }}/{{ companion }}" class="btn btn-sm btn-outline" download>DALL-E Companion PNG</a>
+      <a href="{{ url_for('serve_output', filepath=title ~ '/' ~ companion) }}" class="btn btn-sm btn-outline" download>DALL-E Companion PNG</a>
       {% endfor %}
     </div>
   </div>

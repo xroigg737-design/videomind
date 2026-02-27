@@ -106,12 +106,12 @@
 
   <div class="result-links" id="result-links">
     <p class="mb-2" style="color: #95d5b2; font-weight: 600;">Processat correctament!</p>
-    <a href="/library" class="btn btn-sm">Anar a la biblioteca</a>
+    <a href="{{ url_for('library') }}" class="btn btn-sm">Anar a la biblioteca</a>
   </div>
 
   <div class="result-links" id="error-links" style="display: none;">
     <p class="mb-2" style="color: #ff6b6b; font-weight: 600;">Error durant el processament</p>
-    <a href="/" class="btn btn-sm">Tornar a l'inici</a>
+    <a href="{{ url_for('index') }}" class="btn btn-sm">Tornar a l'inici</a>
   </div>
 </div>
 {% endblock %}
@@ -141,7 +141,7 @@ function setStep(name, state) {
   if (state) el.classList.add(state);
 }
 
-const evtSource = new EventSource('/events/{{ job_id }}');
+const evtSource = new EventSource('{{ url_for("events", job_id=job_id) }}');
 
 evtSource.addEventListener('log', function(e) {
   addLog(e.data);

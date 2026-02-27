@@ -46,7 +46,7 @@
   {% endif %}
 
   <div class="card">
-    <form method="POST" action="/process">
+    <form method="POST" action="{{ url_for('process') }}">
       <div class="form-group">
         <label>Font del vídeo</label>
         <div class="radio-group">
@@ -174,7 +174,7 @@ async function classifyImage(input) {
   formData.append('image', input.files[0]);
 
   try {
-    const resp = await fetch('/classify', { method: 'POST', body: formData });
+    const resp = await fetch('{{ url_for("classify") }}', { method: 'POST', body: formData });
     const data = await resp.json();
     if (data.visual_type) {
       document.getElementById('visual_type').value = data.visual_type;
