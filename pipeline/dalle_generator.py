@@ -96,7 +96,6 @@ def _call_dalle(prompt: str, size: str = "1024x1024") -> bytes | None:
             size=size,
             quality=DALLE_QUALITY,
             n=1,
-            response_format="b64_json",
         )
         b64_data = response.data[0].b64_json
         return base64.b64decode(b64_data)
