@@ -15,7 +15,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 import anthropic
 
-from config import ANTHROPIC_API_KEY, CLAUDE_MODEL
+from config import ANTHROPIC_API_KEY, CLAUDE_MODEL, DALLE_MODEL
 
 # Maximum transcript characters to send to Claude (to stay within context limits)
 MAX_TRANSCRIPT_LENGTH = 100_000
@@ -361,7 +361,7 @@ class VisualFormat(ABC):
                 if dalle_options.get("full_infographic"):
                     print("  Image Layer: Generating full AI infographic...")
                 else:
-                    print("  Image Layer: Generating DALL-E images...")
+                    print(f"  Image Layer: Generating {DALLE_MODEL} images...")
                 dalle_images = generate_all_images(
                     data,
                     format_type=self.FORMAT_TYPE,

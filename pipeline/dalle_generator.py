@@ -170,7 +170,7 @@ def _compose_background_prompt(data: dict) -> str:
 def _call_dalle(prompt: str, size: str = "1024x1024") -> bytes | None:
     """Call the DALL-E API and return raw PNG bytes, or None on failure."""
     if not OPENAI_API_KEY:
-        print("    DALL-E: OPENAI_API_KEY not set, skipping.")
+        print(f"    {DALLE_MODEL}: OPENAI_API_KEY not set, skipping.")
         return None
 
     try:
@@ -187,7 +187,7 @@ def _call_dalle(prompt: str, size: str = "1024x1024") -> bytes | None:
         b64_data = response.data[0].b64_json
         return base64.b64decode(b64_data)
     except Exception as e:
-        print(f"    DALL-E API error: {e}")
+        print(f"    {DALLE_MODEL} API error: {e}")
         return None
 
 
@@ -242,7 +242,7 @@ def generate_section_icons(data: dict, output_dir: str) -> dict | None:
     or None on failure.
     """
     prompt = _compose_icon_grid_prompt(data)
-    print("    DALL-E: Generating section icons...")
+    print(f"    {DALLE_MODEL}: Generating section icons...")
     grid_bytes = _call_dalle(prompt, size="1024x1024")
     if grid_bytes is None:
         return None
@@ -268,7 +268,7 @@ def generate_section_icons(data: dict, output_dir: str) -> dict | None:
         icon_uris.append(image_to_base64_uri(icon_bytes))
         icon_paths.append(path)
 
-    print(f"    DALL-E: {len(icon_uris)} section icons generated.")
+    print(f"    {DALLE_MODEL}: {len(icon_uris)} section icons generated.")
     return {
         "icon_uris": icon_uris,
         "icon_paths": icon_paths,
@@ -284,7 +284,7 @@ def generate_companion_image(
     Returns dict with 'image_uri' and 'image_path', or None on failure.
     """
     prompt = _compose_companion_prompt(data, format_type)
-    print("    DALL-E: Generating companion image...")
+    print(f"    {DALLE_MODEL}: Generating companion image...")
     image_bytes = _call_dalle(prompt, size="1536x1024")
     if image_bytes is None:
         return None
@@ -293,7 +293,7 @@ def generate_companion_image(
     with open(image_path, "wb") as f:
         f.write(image_bytes)
 
-    print("    DALL-E: Companion image generated.")
+    print(f"    {DALLE_MODEL}: Companion image generated.")
     return {
         "image_uri": image_to_base64_uri(image_bytes),
         "image_path": image_path,
@@ -306,7 +306,7 @@ def generate_background(data: dict, output_dir: str) -> dict | None:
     Returns dict with 'bg_uri' and 'bg_path', or None on failure.
     """
     prompt = _compose_background_prompt(data)
-    print("    DALL-E: Generating background texture...")
+    print(f"    {DALLE_MODEL}: Generating background texture...")
     bg_bytes = _call_dalle(prompt, size="1024x1024")
     if bg_bytes is None:
         return None
@@ -315,7 +315,7 @@ def generate_background(data: dict, output_dir: str) -> dict | None:
     with open(bg_path, "wb") as f:
         f.write(bg_bytes)
 
-    print("    DALL-E: Background texture generated.")
+    print(f"    {DALLE_MODEL}: Background texture generated.")
     return {
         "bg_uri": image_to_base64_uri(bg_bytes),
         "bg_path": bg_path,

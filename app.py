@@ -144,7 +144,7 @@ def _run_job(job_id):
                 if dalle_options.get("full_infographic"):
                     logger.step("dalle", f"Generant infografia IA ({DALLE_MODEL}): {title}...")
                 else:
-                    logger.step("dalle", f"Generant imatges DALL-E: {title}...")
+                    logger.step("dalle", f"Generant imatges {DALLE_MODEL}: {title}...")
             logger.step("mindmap", f"Generant {format_label}: {title}...")
             if not validate_config():
                 logger.fail("ANTHROPIC_API_KEY no configurada. Revisa el fitxer .env.")
