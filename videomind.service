@@ -1,0 +1,15 @@
+[Unit]
+Description=VideoMind Flask Web App
+After=network.target
+
+[Service]
+Type=simple
+User=xroig
+WorkingDirectory=/home/xroig/videomind
+EnvironmentFile=/home/xroig/videomind/.env
+ExecStart=/home/xroig/videomind/venv/bin/python /home/xroig/videomind/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

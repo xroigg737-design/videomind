@@ -407,16 +407,10 @@ class VisualFormat(ABC):
             print(f"  Saved: {md_path}")
 
         if formats in ("all", "html"):
-            # Use full AI-generated infographic if available
-            full_info = dalle_images.get("full_infographic") if dalle_images else None
-            if full_info:
-                size_parts = full_info["size"].split("x")
-                w, h = int(size_parts[0]), int(size_parts[1])
-                html_content = html_page_image(
-                    data.get("title", ""), full_info["image_uri"], w, h
-                )
-            else:
-                html_content = self.generate_html(data, dalle_images=dalle_images)
+            # Always render the SVG-based layout for the main HTML file.
+            # The DALL-E full infographic (if generated) is saved separately
+            # as dalle_infographic_<format>.png and shown in its own viewer section.
+            html_content = self.generate_html(data, dalle_images=dalle_images)
             html_path = os.path.join(output_dir, f"{prefix}.html")
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html_content)

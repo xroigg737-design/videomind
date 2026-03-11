@@ -264,7 +264,14 @@ def process():
     model = request.form.get("model", DEFAULT_WHISPER_MODEL)
     lang = request.form.get("lang", "auto").strip() or "auto"
     fmt = request.form.get("format", "all")
-    visual_type = request.form.get("visual_type", "sketchnote")
+    # Determine visual_type based on selected mode
+    visual_mode = request.form.get("visual_mode", "svg")
+    if visual_mode == "full_infographic":
+        visual_type = request.form.get("visual_type_full", "infografia")
+    elif visual_mode == "dalle_components":
+        visual_type = request.form.get("visual_type_dalle", "sketchnote")
+    else:
+        visual_type = request.form.get("visual_type", "sketchnote")
 
     # Validate input
     if source_type == "url":
@@ -280,9 +287,9 @@ def process():
             return render_template("index.html", error=f"La ruta no existeix: {folder}")
         source_val = {"folder": folder}
 
-    # DALL-E options
-    dalle_enabled = request.form.get("dalle_enabled") == "on"
-    dalle_infographic = request.form.get("dalle_infographic") == "on"
+    # DALL-E options (derived from visual_mode)
+    dalle_infographic = visual_mode == "full_infographic"
+    dalle_enabled = visual_mode == "dalle_components"
     dalle_options = None
     if dalle_enabled or dalle_infographic:
         dalle_options = {
